@@ -1,441 +1,234 @@
+// HelicardManagement.jsx - Enhanced with Toast Notifications
 import React, { useState, useEffect } from 'react';
-import { 
-  Upload, 
-  Download, 
-  Eye, 
-  Trash2, 
-  Search, 
-  Filter, 
-  FileText, 
-  Calendar,
-  Building2,
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  X
-} from 'lucide-react';
+import { Upload, FileText, Calendar, CheckCircle, AlertCircle, Download, Eye, Search, Filter, X, RefreshCw, Trash2 } from 'lucide-react';
 import { useToast } from './ToastSystem';
-import { format, parseISO, isAfter, isBefore, addDays } from 'date-fns';
 
 const HelicardManagement = () => {
   const toast = useToast();
-  const [helicards, setHelicards] = useState([]);
-  const [filteredHelicards, setFilteredHelicards] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFacility, setSelectedFacility] = useState('all');
-  const [dateFilter, setDateFilter] = useState('all');
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [selectedHelicard, setSelectedHelicard] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  // Mock facilities - should match your facilities.js
-  const facilities = [
-    'Atlantis', 'Argos', 'Na Kika', 'Thunder Horse',
-    'Mad Dog', 'Holstein', 'Horn Mountain', 'Marlin', 'Petronius'
-  ];
-
-  // Load helicards from localStorage on mount
-  useEffect(() => {
-    const storedHelicards = localStorage.getItem('helicards');
-    if (storedHelicards) {
-      setHelicards(JSON.parse(storedHelicards));
-    } else {
-      // Initialize with sample data
-      const sampleHelicards = [
-        {
-          id: '1',
-          facilityName: 'Atlantis',
-          uploadDate: '2024-01-15',
-          expiryDate: '2024-07-15',
-          fileName: 'ATL-HC-2024-01.pdf',
-          fileSize: '2.3 MB',
-          status: 'active',
-          uploadedBy: 'John Doe',
-          version: '1.0',
-          notes: 'Annual helicard update'
-        },
-        {
-          id: '2',
-          facilityName: 'Thunder Horse',
-          uploadDate: '2024-01-10',
-          expiryDate: '2024-07-10',
-          fileName: 'THD-HC-2024-01.pdf',
-          fileSize: '1.8 MB',
-          status: 'active',
-          uploadedBy: 'Jane Smith',
-          version: '1.0',
-          notes: 'Updated deck markings section'
-        }
-      ];
-      setHelicards(sampleHelicards);
-      localStorage.setItem('helicards', JSON.stringify(sampleHelicards));
+  const [helicards, setHelicards] = useState([
+    {
+      id: 'HEL-001',
+      facilityName: 'Black Hornet',
+      operatingCompany: 'BP',
+      dValue: '22 meters',
+      elevation: "119'",
+      lastUpdated: '2024-01-15',
+      expiryDate: '2025-01-15',
+      uploadedBy: 'PHI Aviation',
+      version: '1.0',
+      status: 'current',
+      fileUrl: '/helicards/black-hornet-v1.pdf',
+      compliance: {
+        frequencyPainted: false,
+        tdpmCircle: false,
+        lightingSystem: true,
+        obstaclesFree: true
+      }
+    },
+    {
+      id: 'HEL-002',
+      facilityName: 'Ocean Blacklion',
+      operatingCompany: 'BP',
+      dValue: '22 m',
+      elevation: "120'",
+      lastUpdated: '2024-01-10',
+      expiryDate: '2025-01-10',
+      uploadedBy: 'Bristow',
+      version: '1.0',
+      status: 'current',
+      fileUrl: '/helicards/ocean-blacklion-v1.pdf',
+      compliance: {
+        frequencyPainted: true,
+        tdpmCircle: true,
+        lightingSystem: true,
+        obstaclesFree: true
+      }
     }
+  ]);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [selectedHelicard, setSelectedHelicard] = useState(null);
+
+  // Check for expiring helicards on mount
+  useEffect(() => {
+    const checkExpiringHelicards = () => {
+      const thirtyDaysFromNow = new Date();
+      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+      
+      helicards.forEach(card => {
+        const expiryDate = new Date(card.expiryDate);
+        if (expiryDate <= thirtyDaysFromNow && card.status === 'current') {
+          toast.warning(`Helicard for ${card.facilityName} expires on ${card.expiryDate}`, {
+            action: () => setSelectedHelicard(card),
+            actionLabel: 'View Details'
+          });
+        }
+      });
+    };
+
+    checkExpiringHelicards();
   }, []);
 
-  // Filter helicards based on search and filters
-  useEffect(() => {
-    let filtered = [...helicards];
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(card =>
-        card.facilityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        card.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        card.uploadedBy.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Facility filter
-    if (selectedFacility !== 'all') {
-      filtered = filtered.filter(card => card.facilityName === selectedFacility);
-    }
-
-    // Date filter
-    const now = new Date();
-    if (dateFilter === 'expiringSoon') {
-      filtered = filtered.filter(card => {
-        const expiryDate = parseISO(card.expiryDate);
-        return isAfter(expiryDate, now) && isBefore(expiryDate, addDays(now, 30));
-      });
-    } else if (dateFilter === 'expired') {
-      filtered = filtered.filter(card => {
-        const expiryDate = parseISO(card.expiryDate);
-        return isBefore(expiryDate, now);
-      });
-    }
-
-    setFilteredHelicards(filtered);
-  }, [searchTerm, selectedFacility, dateFilter, helicards]);
-
-  const getStatusConfig = (helicard) => {
-    const now = new Date();
-    const expiryDate = parseISO(helicard.expiryDate);
-    
-    if (isBefore(expiryDate, now)) {
-      return {
-        color: 'bg-red-50 text-red-700 border-red-200',
-        icon: <AlertCircle className="w-4 h-4" />,
-        label: 'Expired'
-      };
-    } else if (isBefore(expiryDate, addDays(now, 30))) {
-      return {
-        color: 'bg-amber-50 text-amber-700 border-amber-200',
-        icon: <Clock className="w-4 h-4" />,
-        label: 'Expiring Soon'
-      };
-    } else {
-      return {
-        color: 'bg-green-50 text-green-700 border-green-200',
-        icon: <CheckCircle className="w-4 h-4" />,
-        label: 'Active'
-      };
-    }
-  };
-
-  const handleUpload = (files) => {
-    const file = files[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.includes('pdf')) {
-      toast.error('Please upload a PDF file');
-      return;
-    }
-
-    // Simulate upload progress
-    setUploadProgress(0);
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 200);
-
-    // Create new helicard
-    setTimeout(() => {
-      const newHelicard = {
-        id: Date.now().toString(),
-        facilityName: selectedFacility === 'all' ? 'Atlantis' : selectedFacility,
-        uploadDate: new Date().toISOString().split('T')[0],
-        expiryDate: addDays(new Date(), 180).toISOString().split('T')[0],
-        fileName: file.name,
-        fileSize: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        status: 'active',
-        uploadedBy: 'Current User',
-        version: '1.0',
-        notes: ''
-      };
-
-      const updatedHelicards = [...helicards, newHelicard];
-      setHelicards(updatedHelicards);
-      localStorage.setItem('helicards', JSON.stringify(updatedHelicards));
-      
-      toast.success(`Helicard uploaded successfully for ${newHelicard.facilityName}`);
-      setShowUploadModal(false);
-      setUploadProgress(0);
-    }, 2000);
-  };
-
-  const handleDelete = (helicardId) => {
-    const helicard = helicards.find(h => h.id === helicardId);
-    if (!helicard) return;
-
-    if (window.confirm(`Are you sure you want to delete the helicard for ${helicard.facilityName}?`)) {
-      const updatedHelicards = helicards.filter(h => h.id !== helicardId);
-      setHelicards(updatedHelicards);
-      localStorage.setItem('helicards', JSON.stringify(updatedHelicards));
-      toast.success('Helicard deleted successfully');
-    }
-  };
+  const filteredHelicards = helicards.filter(card => {
+    const matchesSearch = card.facilityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         card.operatingCompany.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = filterStatus === 'all' || card.status === filterStatus;
+    return matchesSearch && matchesFilter;
+  });
 
   const handleDownload = (helicard) => {
-    toast.info(`Downloading ${helicard.fileName}...`);
-    // In a real app, this would trigger an actual file download
+    const loadingId = Date.now();
+    toast.loading(`Downloading ${helicard.facilityName} helicard...`, { id: loadingId });
+    
+    // Simulate download
     setTimeout(() => {
-      toast.success('Download completed');
-    }, 1000);
+      toast.remove(loadingId);
+      toast.success('Helicard downloaded successfully!');
+    }, 1500);
   };
 
-  const handlePreview = (helicard) => {
-    setSelectedHelicard(helicard);
-    setShowPreviewModal(true);
+  const handleRequestUpdate = (helicard) => {
+    toast.info(`Update request sent to ${helicard.uploadedBy} for ${helicard.facilityName}`, {
+      action: () => console.log('View request details'),
+      actionLabel: 'Track Request'
+    });
+  };
+
+  const handleDeleteHelicard = (helicardId) => {
+    if (window.confirm('Are you sure you want to delete this helicard?')) {
+      setHelicards(prev => prev.filter(h => h.id !== helicardId));
+      toast.success('Helicard deleted successfully');
+    }
   };
 
   return (
     <div className="p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Helicard Management</h1>
-        <p className="text-gray-600">Manage and track helicard documents for all facilities</p>
-      </div>
-
-      {/* Filters and Actions */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search helicards..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
-            </div>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Helicard Management</h1>
+            <p className="text-gray-600 mt-1">Manage helideck information plates from PHI and Bristow</p>
           </div>
-
-          {/* Facility Filter */}
-          <select
-            value={selectedFacility}
-            onChange={(e) => setSelectedFacility(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            <option value="all">All Facilities</option>
-            {facilities.map(facility => (
-              <option key={facility} value={facility}>{facility}</option>
-            ))}
-          </select>
-
-          {/* Date Filter */}
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="expiringSoon">Expiring Soon</option>
-            <option value="expired">Expired</option>
-          </select>
-
-          {/* Upload Button */}
           <button
             onClick={() => setShowUploadModal(true)}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+            className="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
           >
-            <Upload className="w-4 h-4" />
+            <Upload className="w-5 h-5" />
             Upload Helicard
           </button>
         </div>
       </div>
 
+      {/* Search and Filters */}
+      <div className="mb-6 flex gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search by facility name or operator..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+          />
+        </div>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+        >
+          <option value="all">All Status</option>
+          <option value="current">Current</option>
+          <option value="expiring">Expiring Soon</option>
+          <option value="expired">Expired</option>
+        </select>
+      </div>
+
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <SummaryCard
           title="Total Helicards"
           value={helicards.length}
-          icon={<FileText className="w-5 h-5" />}
+          icon={<FileText />}
           color="blue"
         />
         <SummaryCard
-          title="Active"
-          value={helicards.filter(h => getStatusConfig(h).label === 'Active').length}
-          icon={<CheckCircle className="w-5 h-5" />}
+          title="Current"
+          value={helicards.filter(h => h.status === 'current').length}
+          icon={<CheckCircle />}
           color="green"
         />
         <SummaryCard
           title="Expiring Soon"
-          value={helicards.filter(h => getStatusConfig(h).label === 'Expiring Soon').length}
-          icon={<Clock className="w-5 h-5" />}
-          color="amber"
+          value={helicards.filter(h => h.status === 'expiring').length}
+          icon={<AlertCircle />}
+          color="yellow"
         />
         <SummaryCard
-          title="Expired"
-          value={helicards.filter(h => getStatusConfig(h).label === 'Expired').length}
-          icon={<AlertCircle className="w-5 h-5" />}
+          title="Non-Compliant"
+          value={helicards.filter(h => !Object.values(h.compliance).every(v => v)).length}
+          icon={<AlertCircle />}
           color="red"
         />
       </div>
 
-      {/* Helicards Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Facility
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  File Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Upload Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Expiry Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Uploaded By
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredHelicards.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
-                    No helicards found
-                  </td>
-                </tr>
-              ) : (
-                filteredHelicards.map((helicard) => {
-                  const statusConfig = getStatusConfig(helicard);
-                  return (
-                    <tr key={helicard.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <Building2 className="w-4 h-4 text-gray-400 mr-2" />
-                          <span className="font-medium text-gray-900">{helicard.facilityName}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <FileText className="w-4 h-4 text-gray-400 mr-2" />
-                          <div>
-                            <div className="text-sm text-gray-900">{helicard.fileName}</div>
-                            <div className="text-xs text-gray-500">{helicard.fileSize}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {format(parseISO(helicard.uploadDate), 'MMM dd, yyyy')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {format(parseISO(helicard.expiryDate), 'MMM dd, yyyy')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusConfig.color}`}>
-                          {statusConfig.icon}
-                          {statusConfig.label}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {helicard.uploadedBy}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handlePreview(helicard)}
-                            className="text-blue-600 hover:text-blue-700"
-                            title="Preview"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDownload(helicard)}
-                            className="text-green-600 hover:text-green-700"
-                            title="Download"
-                          >
-                            <Download className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(helicard.id)}
-                            className="text-red-600 hover:text-red-700"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* Helicards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredHelicards.map((helicard) => (
+          <HelicardCard
+            key={helicard.id}
+            helicard={helicard}
+            onView={() => setSelectedHelicard(helicard)}
+            onDownload={() => handleDownload(helicard)}
+            onDelete={() => handleDeleteHelicard(helicard.id)}
+          />
+        ))}
       </div>
 
       {/* Upload Modal */}
       {showUploadModal && (
-        <UploadModal
+        <UploadHelicardModal
           onClose={() => setShowUploadModal(false)}
-          onUpload={handleUpload}
-          uploadProgress={uploadProgress}
-          facilities={facilities}
+          onUpload={(newHelicard) => {
+            setHelicards([...helicards, newHelicard]);
+            setShowUploadModal(false);
+            toast.success(`Helicard for ${newHelicard.facilityName} uploaded successfully!`);
+          }}
         />
       )}
 
-      {/* Preview Modal */}
-      {showPreviewModal && selectedHelicard && (
-        <PreviewModal
+      {/* Helicard Details Modal */}
+      {selectedHelicard && (
+        <HelicardDetailsModal
           helicard={selectedHelicard}
-          onClose={() => setShowPreviewModal(false)}
+          onClose={() => setSelectedHelicard(null)}
+          onRequestUpdate={() => handleRequestUpdate(selectedHelicard)}
+          onDownload={() => handleDownload(selectedHelicard)}
         />
       )}
     </div>
   );
 };
 
-// Summary Card Component
+// SummaryCard component
 const SummaryCard = ({ title, value, icon, color }) => {
   const colorClasses = {
     blue: 'bg-blue-50 text-blue-600',
     green: 'bg-green-50 text-green-600',
-    amber: 'bg-amber-50 text-amber-600',
+    yellow: 'bg-amber-50 text-amber-600',
     red: 'bg-red-50 text-red-600'
   };
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-      <div className="flex items-start justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+          <p className="text-gray-500 text-sm font-medium">{title}</p>
+          <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
         </div>
-        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${colorClasses[color]}`}>
           {icon}
         </div>
       </div>
@@ -443,13 +236,115 @@ const SummaryCard = ({ title, value, icon, color }) => {
   );
 };
 
-// Upload Modal Component
-const UploadModal = ({ onClose, onUpload, uploadProgress, facilities }) => {
+// Enhanced HelicardCard component
+const HelicardCard = ({ helicard, onView, onDownload, onDelete }) => {
+  const toast = useToast();
+  const statusConfig = {
+    current: { color: 'bg-green-50 text-green-700 border-green-200', label: 'Current' },
+    expiring: { color: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Expiring Soon' },
+    expired: { color: 'bg-red-50 text-red-700 border-red-200', label: 'Expired' }
+  };
+
+  const status = statusConfig[helicard.status];
+  const hasComplianceIssues = !Object.values(helicard.compliance).every(v => v);
+
+  const handleComplianceClick = () => {
+    if (hasComplianceIssues) {
+      const issues = Object.entries(helicard.compliance)
+        .filter(([_, value]) => !value)
+        .map(([key]) => key.replace(/([A-Z])/g, ' $1').toLowerCase())
+        .join(', ');
+      
+      toast.warning(`Compliance issues: ${issues}`, {
+        action: onView,
+        actionLabel: 'View Details'
+      });
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg transition-all">
+      <div className="p-6">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">{helicard.facilityName}</h3>
+            <p className="text-sm text-gray-500 mt-1">{helicard.operatingCompany}</p>
+          </div>
+          <span className={`px-3 py-1 rounded-full text-sm font-medium border ${status.color}`}>
+            {status.label}
+          </span>
+        </div>
+
+        <div className="space-y-3 mb-4">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">D-Value:</span>
+            <span className="font-medium text-gray-900">{helicard.dValue}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Elevation:</span>
+            <span className="font-medium text-gray-900">{helicard.elevation}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Expires:</span>
+            <span className="font-medium text-gray-900">
+              {new Date(helicard.expiryDate).toLocaleDateString()}
+            </span>
+          </div>
+        </div>
+
+        {hasComplianceIssues && (
+          <div 
+            onClick={handleComplianceClick}
+            className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg cursor-pointer hover:bg-amber-100 transition-colors"
+          >
+            <p className="text-sm text-amber-800 font-medium flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              Compliance Issues Detected
+            </p>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <button
+            onClick={onView}
+            className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+          >
+            <Eye className="w-4 h-4" />
+            View
+          </button>
+          <button 
+            onClick={onDownload}
+            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Download
+          </button>
+          <button
+            onClick={onDelete}
+            className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+            aria-label="Delete helicard"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Enhanced Upload Modal with validation
+const UploadHelicardModal = ({ onClose, onUpload }) => {
+  const toast = useToast();
+  const [formData, setFormData] = useState({
+    facilityName: '',
+    operatingCompany: 'BP',
+    dValue: '',
+    elevation: '',
+    file: null,
+    uploadedBy: 'PHI Aviation'
+  });
+
   const [isDragging, setIsDragging] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [selectedFacility, setSelectedFacility] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [notes, setNotes] = useState('');
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -463,210 +358,245 @@ const UploadModal = ({ onClose, onUpload, uploadProgress, facilities }) => {
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
-    const files = Array.from(e.dataTransfer.files);
-    setSelectedFiles(files);
-  };
-
-  const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files);
-    setSelectedFiles(files);
-  };
-
-  const handleSubmit = () => {
-    if (selectedFiles.length > 0 && selectedFacility) {
-      onUpload(selectedFiles);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type === 'application/pdf') {
+      setFormData({ ...formData, file });
+      toast.success('PDF file added successfully');
+    } else {
+      toast.error('Please upload a PDF file only');
     }
   };
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type === 'application/pdf') {
+      setFormData({ ...formData, file });
+      toast.success('PDF file added successfully');
+    } else {
+      toast.error('Please upload a PDF file only');
+    }
+  };
+
+  const handleSubmit = () => {
+    
+    // Validation
+    if (!formData.file) {
+      toast.error('Please upload a helicard PDF');
+      return;
+    }
+    
+    if (!formData.facilityName || !formData.dValue || !formData.elevation) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    const loadingId = Date.now();
+    toast.loading('Uploading helicard...', { id: loadingId });
+
+    // Simulate upload delay
+    setTimeout(() => {
+      const newHelicard = {
+        ...formData,
+        id: `HEL-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+        lastUpdated: new Date().toISOString().split('T')[0],
+        expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+        version: '1.0',
+        status: 'current',
+        fileUrl: '/helicards/new-upload.pdf',
+        compliance: {
+          frequencyPainted: true,
+          tdpmCircle: true,
+          lightingSystem: true,
+          obstaclesFree: true
+        }
+      };
+      
+      toast.remove(loadingId);
+      onUpload(newHelicard);
+    }, 1500);
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-lg">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Upload Helicard</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Facility Selection */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Select Facility
-          </label>
-          <select
-            value={selectedFacility}
-            onChange={(e) => setSelectedFacility(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-            required
-          >
-            <option value="">Choose a facility...</option>
-            {facilities.map(facility => (
-              <option key={facility} value={facility}>{facility}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Expiry Date */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Expiry Date
-          </label>
-          <input
-            type="date"
-            value={expiryDate}
-            onChange={(e) => setExpiryDate(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
-        </div>
-
-        {/* File Upload Area */}
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            isDragging ? 'border-green-500 bg-green-50' : 'border-gray-300'
-          }`}
-        >
-          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600 mb-2">
-            {selectedFiles.length > 0
-              ? `Selected: ${selectedFiles[0].name}`
-              : 'Drag and drop your PDF here, or click to browse'}
-          </p>
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={handleFileSelect}
-            className="hidden"
-            id="file-upload"
-          />
-          <label
-            htmlFor="file-upload"
-            className="cursor-pointer text-green-600 hover:text-green-700 font-medium"
-          >
-            Choose file
-          </label>
-        </div>
-
-        {/* Notes */}
-        <div className="mb-4 mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Notes (optional)
-          </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-            placeholder="Add any relevant notes..."
-          />
-        </div>
-
-        {/* Upload Progress */}
-        {uploadProgress > 0 && (
-          <div className="mb-4">
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
-            <p className="text-sm text-gray-600 mt-1">{uploadProgress}% uploaded</p>
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Upload Helicard</h2>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={!selectedFiles.length || !selectedFacility || uploadProgress > 0}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {uploadProgress > 0 ? 'Uploading...' : 'Upload'}
+            <X className="w-5 h-5" />
           </button>
         </div>
+
+ focus:ring-green-500 focus:border-green-500"
+                placeholder="e.g., 120'"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-4 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!formData.file}
+              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              Upload Helicard
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
 };
 
-// Preview Modal Component
-const PreviewModal = ({ helicard, onClose }) => {
+// Enhanced Details Modal
+const HelicardDetailsModal = ({ helicard, onClose, onRequestUpdate, onDownload }) => {
+  const toast = useToast();
+  
+  const handlePrint = () => {
+    toast.info('Opening print dialog...');
+    window.print();
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(`Helicard for ${helicard.facilityName} - ${window.location.href}`);
+    toast.success('Link copied to clipboard!');
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Helicard Preview</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Helicard Details */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div>
-            <p className="text-sm text-gray-600">Facility</p>
-            <p className="font-medium">{helicard.facilityName}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">File Name</p>
-            <p className="font-medium">{helicard.fileName}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Upload Date</p>
-            <p className="font-medium">{format(parseISO(helicard.uploadDate), 'MMMM dd, yyyy')}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Expiry Date</p>
-            <p className="font-medium">{format(parseISO(helicard.expiryDate), 'MMMM dd, yyyy')}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Uploaded By</p>
-            <p className="font-medium">{helicard.uploadedBy}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Version</p>
-            <p className="font-medium">{helicard.version}</p>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="bg-green-600 text-white p-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <h2 className="text-2xl font-bold">{helicard.facilityName}</h2>
+              <p className="mt-1 opacity-90">{helicard.operatingCompany}</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
-        {helicard.notes && (
-          <div className="mb-6">
-            <p className="text-sm text-gray-600 mb-1">Notes</p>
-            <p className="text-gray-800">{helicard.notes}</p>
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* Metadata */}
+          <div className="grid grid-cols-3 gap-6">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">D-Value</h3>
+              <p className="text-gray-900 font-medium">{helicard.dValue}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Elevation</h3>
+              <p className="text-gray-900 font-medium">{helicard.elevation}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Version</h3>
+              <p className="text-gray-900 font-medium">{helicard.version}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Last Updated</h3>
+              <p className="text-gray-900 font-medium">
+                {new Date(helicard.lastUpdated).toLocaleDateString()}
+              </p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Expires</h3>
+              <p className="text-gray-900 font-medium">
+                {new Date(helicard.expiryDate).toLocaleDateString()}
+              </p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-1">Uploaded By</h3>
+              <p className="text-gray-900 font-medium">{helicard.uploadedBy}</p>
+            </div>
           </div>
-        )}
 
-        {/* PDF Preview Placeholder */}
-        <div className="bg-gray-100 rounded-lg p-12 text-center">
-          <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">PDF preview would be displayed here</p>
-          <p className="text-sm text-gray-500 mt-2">
-            In a production environment, this would show the actual PDF content
-          </p>
-        </div>
+          {/* Compliance Status */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Compliance Status</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {Object.entries(helicard.compliance).map(([key, value]) => (
+                <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-gray-700">
+                    {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                  </span>
+                  {value ? (
+                    <span className="flex items-center gap-2 text-green-600">
+                      <CheckCircle className="w-4 h-4" />
+                      Compliant
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2 text-red-600">
+                      <AlertCircle className="w-4 h-4" />
+                      Non-Compliant
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-3 mt-6">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Close
-          </button>
-          <button
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
-          >
-            <Download className="w-4 h-4" />
-            Download
-          </button>
+          {/* PDF Preview */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Document Preview</h3>
+            <div className="bg-gray-100 rounded-lg p-8 text-center">
+              <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 mb-4">PDF preview would be displayed here</p>
+              <button 
+                onClick={onDownload}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 mx-auto"
+              >
+                <Download className="w-4 h-4" />
+                Download Full PDF
+              </button>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-between items-center pt-4 border-t">
+            <div className="flex gap-3">
+              <button 
+                onClick={onRequestUpdate}
+                className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Request Update
+              </button>
+              <button 
+                onClick={handlePrint}
+                className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium"
+              >
+                Print
+              </button>
+              <button 
+                onClick={handleShare}
+                className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium"
+              >
+                Share
+              </button>
+            </div>
+            <button
+              onClick={onClose}
+              className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>
