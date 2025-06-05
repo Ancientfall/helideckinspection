@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Calendar, Clock, Filter, Search, MapPin, Wind, Cloud, ChevronDown, ChevronUp, Download, RefreshCw, Bell } from 'lucide-react';
+import { AlertTriangle, Calendar, Clock, Filter, Search, MapPin, Wind, Cloud, ChevronDown, ChevronUp, Download, RefreshCw, Bell, Upload, Edit2, X, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './ToastSystem';
 import { useNotifications } from './NotificationCenter';
 import { useAuth } from '../contexts/AuthContext';
+import { hasPermission, PERMISSIONS } from '../constants/roles';
 
 const NotificationBellButton = () => {
   const notifications = useNotifications();
@@ -27,8 +28,10 @@ const NotificationBellButton = () => {
 // NOTAMs Overview Component
 const NOTAMsOverview = () => {
   const toast = useToast();
+  const { user } = useAuth();
   const [notams, setNotams] = useState([]);
   const [isLoadingNotams, setIsLoadingNotams] = useState(true);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   
   // TODO: Fetch NOTAMs from backend API
   useEffect(() => {
@@ -125,6 +128,23 @@ const NOTAMsOverview = () => {
     }, 2000);
   };
 
+  const handleUploadNotam = (notamData) => {
+    toast.loading('Uploading NOTAM...', { id: 'upload-notam' });
+    // TODO: API call to upload NOTAM
+    setTimeout(() => {
+      toast.remove('upload-notam');
+      toast.success('NOTAM uploaded successfully');
+      // Add to notams list temporarily
+      const newNotam = {
+        id: `NOTAM-${Date.now()}`,
+        ...notamData,
+        status: new Date(notamData.effectiveFrom) > new Date() ? 'UPCOMING' : 'ACTIVE',
+        lastUpdated: new Date().toISOString()
+      };
+      setNotams([newNotam, ...notams]);
+    }, 1500);
+  };
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
@@ -138,6 +158,15 @@ const NOTAMsOverview = () => {
                 Real-time notices affecting helideck operations across all facilities
               </p>
               <div className="flex gap-3">
+                {hasPermission(user?.role, PERMISSIONS.UPLOAD_NOTAMS) && (
+                  <button
+                    onClick={() => setShowUploadModal(true)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Upload NOTAM
+                  </button>
+                )}
                 <button
                   onClick={handleRefresh}
                   className="p-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -282,14 +311,37 @@ const NOTAMsOverview = () => {
           </div>
         </main>
       </div>
+      
+      {/* Upload NOTAM Modal */}
+      <UploadNOTAMModal 
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onSubmit={handleUploadNotam}
+      />
     </div>
   );
 };
 
 // NOTAM Card Component
 const NOTAMCard = ({ notam, expanded, onToggle, typeConfig, getTimeUntilEffective }) => {
+  const toast = useToast();
+  const { user } = useAuth();
   const config = typeConfig[notam.type];
   const timeUntil = getTimeUntilEffective(notam.effectiveFrom);
+  const [isEditing, setIsEditing] = useState(false);
+  
+  const handleClearNotam = () => {
+    toast.loading('Clearing NOTAM...', { id: 'clear-notam' });
+    // TODO: API call to clear NOTAM
+    setTimeout(() => {
+      toast.remove('clear-notam');
+      toast.success('NOTAM cleared successfully');
+    }, 1000);
+  };
+  
+  const handleUpdateNotam = () => {
+    setIsEditing(true);
+  };
   
   return (
     <div className={`bg-white rounded-xl shadow-sm border ${config.border} overflow-hidden transition-all`}>
@@ -406,9 +458,29 @@ const NOTAMCard = ({ notam, expanded, onToggle, typeConfig, getTimeUntilEffectiv
             <p className="text-xs text-gray-500">
               Last updated: {new Date(notam.lastUpdated).toLocaleString()}
             </p>
-            <button className="text-green-600 hover:text-green-700 font-medium text-sm">
-              View Full Details
-            </button>
+            <div className="flex items-center gap-2">
+              {hasPermission(user?.role, PERMISSIONS.UPDATE_NOTAMS) && notam.status === 'ACTIVE' && (
+                <button 
+                  onClick={handleUpdateNotam}
+                  className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center gap-1"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Update
+                </button>
+              )}
+              {hasPermission(user?.role, PERMISSIONS.CLEAR_NOTAMS) && notam.status === 'ACTIVE' && (
+                <button 
+                  onClick={handleClearNotam}
+                  className="text-red-600 hover:text-red-700 font-medium text-sm flex items-center gap-1"
+                >
+                  <X className="w-4 h-4" />
+                  Clear
+                </button>
+              )}
+              <button className="text-green-600 hover:text-green-700 font-medium text-sm">
+                View Full Details
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -598,6 +670,208 @@ const Header = () => {
         </div>
       </div>
     </header>
+  );
+};
+
+// Upload NOTAM Modal Component
+const UploadNOTAMModal = ({ isOpen, onClose, onSubmit }) => {
+  const [formData, setFormData] = useState({
+    title: '',
+    type: 'INFO',
+    category: '',
+    facility: '',
+    description: '',
+    effectiveFrom: '',
+    effectiveTo: '',
+    restrictions: '',
+    alternateArrangements: '',
+    weatherImpact: false,
+    windSpeed: '',
+    windDirection: '',
+    frictionValue: '',
+    contactInfo: '',
+    recommendedAction: ''
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(formData);
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-semibold">Upload New NOTAM</h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Title*
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Type*
+              </label>
+              <select
+                required
+                value={formData.type}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              >
+                <option value="CRITICAL">Critical</option>
+                <option value="WARNING">Warning</option>
+                <option value="INFO">Info</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category*
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g., Weather, Maintenance, Operations"
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Facility*
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g., Atlantis, Mad Dog"
+                value={formData.facility}
+                onChange={(e) => setFormData({ ...formData, facility: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Effective From*
+              </label>
+              <input
+                type="datetime-local"
+                required
+                value={formData.effectiveFrom}
+                onChange={(e) => setFormData({ ...formData, effectiveFrom: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Effective To
+              </label>
+              <input
+                type="datetime-local"
+                value={formData.effectiveTo}
+                onChange={(e) => setFormData({ ...formData, effectiveTo: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Description*
+            </label>
+            <textarea
+              required
+              rows={3}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="weatherImpact"
+              checked={formData.weatherImpact}
+              onChange={(e) => setFormData({ ...formData, weatherImpact: e.target.checked })}
+              className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+            />
+            <label htmlFor="weatherImpact" className="text-sm text-gray-700">
+              Weather Impact
+            </label>
+          </div>
+
+          {formData.weatherImpact && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Wind Speed
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., 35 knots"
+                  value={formData.windSpeed}
+                  onChange={(e) => setFormData({ ...formData, windSpeed: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Wind Direction
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., SW"
+                  value={formData.windDirection}
+                  onChange={(e) => setFormData({ ...formData, windDirection: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Upload NOTAM
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 };
 
