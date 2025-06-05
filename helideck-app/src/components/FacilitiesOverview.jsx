@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Clock, Download, Search, RefreshCw, TrendingUp, Bell, Plus } from 'lucide-react';
+import { AlertTriangle, Clock, Download, Search, RefreshCw, TrendingUp, Bell, Plus, Archive } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './ToastSystem';
 import { useNotifications } from './NotificationCenter';
@@ -35,12 +35,13 @@ const FacilitiesOverview = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showFacilityForm, setShowFacilityForm] = useState(false);
   const [editingFacility, setEditingFacility] = useState(null);
+  const [showArchived, setShowArchived] = useState(false);
   
   // Fetch facilities from backend API
   const fetchFacilities = async () => {
     setIsLoading(true);
     try {
-      const data = await facilitiesAPI.getAll();
+      const data = await facilitiesAPI.getAll(showArchived);
       console.log('Fetched facilities:', data);
       setFacilities(data);
     } catch (error) {
@@ -53,7 +54,7 @@ const FacilitiesOverview = () => {
 
   useEffect(() => {
     fetchFacilities();
-  }, []);
+  }, [showArchived]);
 
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -187,6 +188,32 @@ const FacilitiesOverview = () => {
     }
   };
 
+  const handleArchiveFacility = async (facility) => {
+    const action = facility.status === 'Active' ? 'archive' : 'unarchive';
+    const confirmMessage = facility.status === 'Active' 
+      ? `Are you sure you want to archive ${facility.name}?`
+      : `Are you sure you want to unarchive ${facility.name}?`;
+    
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      if (facility.status === 'Active') {
+        await facilitiesAPI.archive(facility.id);
+        toast.success(`${facility.name} has been archived`);
+      } else {
+        await facilitiesAPI.unarchive(facility.id);
+        toast.success(`${facility.name} has been unarchived`);
+      }
+      fetchFacilities();
+    } catch (error) {
+      console.error(`Error ${action}ing facility:`, error);
+      const errorMessage = error.response?.data?.error || error.message || `Failed to ${action} facility`;
+      toast.error(errorMessage);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
@@ -274,6 +301,15 @@ const FacilitiesOverview = () => {
           <option value="fixed">Fixed Assets</option>
           <option value="vessel">Vessels</option>
         </select>
+        <label className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+            className="rounded text-green-600 focus:ring-green-500"
+          />
+          <span className="text-gray-700">Show Archived</span>
+        </label>
           </div>
 
           {/* Summary Cards */}
@@ -322,6 +358,7 @@ const FacilitiesOverview = () => {
                         onView={() => setSelectedFacility(facility)}
                         onEdit={() => handleEditFacility(facility)}
                         onDelete={() => handleDeleteFacility(facility.id)}
+                        onArchive={() => handleArchiveFacility(facility)}
                         hasManagePermission={hasPermission(PERMISSIONS.MANAGE_FACILITIES)}
                       />
                     ))}
@@ -657,9 +694,9 @@ const SummaryCards = ({ facilities }) => {
 };
 
 // Facility Row Component
-const FacilityRow = ({ facility, onView, onEdit, onDelete, hasManagePermission }) => {
+const FacilityRow = ({ facility, onView, onEdit, onDelete, onArchive, hasManagePermission }) => {
   return (
-    <tr className="hover:bg-gray-50 transition-colors">
+    <tr className={`hover:bg-gray-50 transition-colors ${facility.status === 'Inactive' ? 'opacity-60' : ''}`}>
       <td className="px-4 py-4">
         <div>
           <p className="font-semibold text-gray-900">{facility.name}</p>
@@ -704,11 +741,26 @@ const FacilityRow = ({ facility, onView, onEdit, onDelete, hasManagePermission }
               </button>
               <span className="text-gray-300">|</span>
               <button
-                onClick={onDelete}
-                className="text-red-600 hover:text-red-700 font-medium text-sm"
+                onClick={onArchive}
+                className={`font-medium text-sm ${
+                  facility.status === 'Active'
+                    ? 'text-orange-600 hover:text-orange-700'
+                    : 'text-green-600 hover:text-green-700'
+                }`}
               >
-                Delete
+                {facility.status === 'Active' ? 'Archive' : 'Unarchive'}
               </button>
+              {facility.status === 'Active' && (
+                <>
+                  <span className="text-gray-300">|</span>
+                  <button
+                    onClick={onDelete}
+                    className="text-red-600 hover:text-red-700 font-medium text-sm"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>

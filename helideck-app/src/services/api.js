@@ -121,8 +121,11 @@ export const inspectionsAPI = {
 
 // Facilities API
 export const facilitiesAPI = {
-  getAll: async () => {
-    const response = await fetch(`${API_BASE_URL}/facilities`, {
+  getAll: async (includeArchived = false) => {
+    const url = includeArchived 
+      ? `${API_BASE_URL}/facilities?include_archived=true`
+      : `${API_BASE_URL}/facilities`;
+    const response = await fetch(url, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
@@ -164,6 +167,24 @@ export const facilitiesAPI = {
   getStats: async (id) => {
     const response = await fetch(`${API_BASE_URL}/facilities/${id}/stats`, {
       headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  archive: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/facilities/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status: 'Inactive' })
+    });
+    return handleResponse(response);
+  },
+
+  unarchive: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/facilities/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status: 'Active' })
     });
     return handleResponse(response);
   }

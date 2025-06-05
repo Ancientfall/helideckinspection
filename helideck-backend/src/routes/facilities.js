@@ -6,17 +6,21 @@ const router = express.Router();
 
 // Get all facilities
 router.get('/', authenticateToken, (req, res) => {
-  db.all(
-    'SELECT * FROM facilities WHERE status = ? ORDER BY name',
-    ['Active'],
-    (err, rows) => {
-      if (err) {
-        console.error('Error fetching facilities:', err);
-        return res.status(500).json({ error: 'Failed to fetch facilities' });
-      }
-      res.json(rows);
+  const includeArchived = req.query.include_archived === 'true';
+  
+  const query = includeArchived 
+    ? 'SELECT * FROM facilities ORDER BY status DESC, name'
+    : 'SELECT * FROM facilities WHERE status = ? ORDER BY name';
+  
+  const params = includeArchived ? [] : ['Active'];
+  
+  db.all(query, params, (err, rows) => {
+    if (err) {
+      console.error('Error fetching facilities:', err);
+      return res.status(500).json({ error: 'Failed to fetch facilities' });
     }
-  );
+    res.json(rows);
+  });
 });
 
 // Get facility by ID
