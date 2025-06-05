@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Clock, Download, Search, RefreshCw, TrendingUp, Bell } from 'lucide-react';
+import { AlertTriangle, Clock, Download, Search, RefreshCw, TrendingUp, Bell, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './ToastSystem';
 import { useNotifications } from './NotificationCenter';
 import { useAuth } from '../contexts/AuthContext';
+import { facilitiesAPI } from '../services/api';
+import FacilityForm from './FacilityForm';
+import { PERMISSIONS } from '../constants/roles';
 
 const NotificationBellButton = () => {
   const notifications = useNotifications();
@@ -27,19 +30,29 @@ const NotificationBellButton = () => {
 // Facilities Overview Dashboard Component with Sidebar Layout
 const FacilitiesOverview = () => {
   const toast = useToast();
+  const { hasPermission } = useAuth();
   const [facilities, setFacilities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showFacilityForm, setShowFacilityForm] = useState(false);
+  const [editingFacility, setEditingFacility] = useState(null);
   
-  // TODO: Fetch facilities from backend API
+  // Fetch facilities from backend API
+  const fetchFacilities = async () => {
+    setIsLoading(true);
+    try {
+      const data = await facilitiesAPI.getAll();
+      console.log('Fetched facilities:', data);
+      setFacilities(data);
+    } catch (error) {
+      console.error('Error fetching facilities:', error);
+      toast.error('Failed to load facilities');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Placeholder for API call
-    // fetch('/api/facilities')
-    //   .then(res => res.json())
-    //   .then(data => {
-    //     setFacilities(data);
-    //     setIsLoading(false);
-    //   });
-    setIsLoading(false);
+    fetchFacilities();
   }, []);
 
   const [filter, setFilter] = useState('all');
@@ -98,33 +111,32 @@ const FacilitiesOverview = () => {
     const upcoming = [];
     
     facilities.forEach(facility => {
-      Object.entries(facility.inspections).forEach(([type, inspection]) => {
-        if (inspection.date) {
-          const days = calculateDaysUntilDue(inspection.date, inspection.frequency);
-          if (days <= 90 && days >= 0) {
-            upcoming.push({
-              facility: facility.name,
-              type: type.replace(/([A-Z])/g, ' $1').trim(),
-              daysUntil: days,
-              dueDate: new Date(new Date(inspection.date).setFullYear(new Date(inspection.date).getFullYear() + 1))
-            });
+      if (facility.inspections) {
+        Object.entries(facility.inspections).forEach(([type, inspection]) => {
+          if (inspection.date) {
+            const days = calculateDaysUntilDue(inspection.date, inspection.frequency);
+            if (days <= 90 && days >= 0) {
+              upcoming.push({
+                facility: facility.name,
+                type: type.replace(/([A-Z])/g, ' $1').trim(),
+                daysUntil: days,
+                dueDate: new Date(new Date(inspection.date).setFullYear(new Date(inspection.date).getFullYear() + 1))
+              });
+            }
           }
-        }
-      });
+        });
+      }
     });
     
     setNotifications(upcoming.sort((a, b) => a.daysUntil - b.daysUntil));
-    
-    // Removed hardcoded toast notification - will be triggered from backend data
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount
+  }, [facilities]);
 
   // Filter facilities
   const filteredFacilities = facilities.filter(facility => {
     const matchesSearch = facility.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filter === 'all' || facility.type.toLowerCase() === filter.toLowerCase();
+    const matchesType = filter === 'all' || (facility.type && facility.type.toLowerCase() === filter.toLowerCase());
     
-    if (showUpcomingOnly) {
+    if (showUpcomingOnly && facility.inspections) {
       const hasUpcoming = Object.entries(facility.inspections).some(([_, inspection]) => {
         if (!inspection.date) return false;
         const days = calculateDaysUntilDue(inspection.date, inspection.frequency);
@@ -148,6 +160,33 @@ const FacilitiesOverview = () => {
     }, 2000);
   };
 
+  const handleAddFacility = () => {
+    setEditingFacility(null);
+    setShowFacilityForm(true);
+  };
+
+  const handleEditFacility = (facility) => {
+    setEditingFacility(facility);
+    setShowFacilityForm(true);
+  };
+
+  const handleDeleteFacility = async (facilityId) => {
+    if (!window.confirm('Are you sure you want to delete this facility?')) {
+      return;
+    }
+
+    try {
+      await facilitiesAPI.delete(facilityId);
+      toast.success('Facility deleted successfully');
+      fetchFacilities();
+    } catch (error) {
+      console.error('Error deleting facility:', error);
+      console.error('Error response:', error.response);
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to delete facility';
+      toast.error(errorMessage);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
@@ -162,12 +201,21 @@ const FacilitiesOverview = () => {
               </p>
               <div className="flex gap-3">
                 <button
-                  onClick={() => toast.info('Refreshing data...')}
+                  onClick={fetchFacilities}
                   className="p-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                   aria-label="Refresh data"
                 >
                   <RefreshCw className="w-5 h-5 text-gray-600" />
                 </button>
+                {hasPermission(PERMISSIONS.MANAGE_FACILITIES) && (
+                  <button
+                    onClick={handleAddFacility}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Add Facility
+                  </button>
+                )}
                 <button
                   onClick={handleExport}
                   className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
@@ -233,54 +281,75 @@ const FacilitiesOverview = () => {
 
           {/* Facilities Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                  Facility
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
-                  Helideck<br/>Inspection
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
-                  Fuel<br/>Inspection
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
-                  Friction<br/>Test
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
-                  Barrier<br/>Health
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
-                  ERP<br/>Review
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
-                  PHI<br/>Helideck
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
-                  BRS<br/>Helideck
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredFacilities.map((facility) => (
-                <FacilityRow
-                  key={facility.id}
-                  facility={facility}
-                  calculateDaysUntilDue={calculateDaysUntilDue}
-                  getStatusColor={getStatusColor}
-                  statusConfig={statusConfig}
-                  onView={() => setSelectedFacility(facility)}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
+            {isLoading ? (
+              <div className="p-8 text-center text-gray-500">
+                Loading facilities...
+              </div>
+            ) : filteredFacilities.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                {searchTerm || filter !== 'all' ? 'No facilities match your search criteria' : 'No facilities found'}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                        Facility
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
+                        Location
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
+                        Operator
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
+                        Type
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredFacilities.map((facility) => (
+                      <FacilityRow
+                        key={facility.id}
+                        facility={facility}
+                        onView={() => setSelectedFacility(facility)}
+                        onEdit={() => handleEditFacility(facility)}
+                        onDelete={() => handleDeleteFacility(facility.id)}
+                        hasManagePermission={hasPermission(PERMISSIONS.MANAGE_FACILITIES)}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
+
+          {/* Facility Form Modal */}
+          {showFacilityForm && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div className="max-w-lg w-full mx-4">
+                <FacilityForm
+                  facility={editingFacility}
+                  onClose={() => {
+                    setShowFacilityForm(false);
+                    setEditingFacility(null);
+                  }}
+                  onSuccess={() => {
+                    setShowFacilityForm(false);
+                    setEditingFacility(null);
+                    fetchFacilities();
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Facility Details Modal */}
           {selectedFacility && (
@@ -516,15 +585,17 @@ const SummaryCards = ({ facilities }) => {
     let current = 0;
 
     facilities.forEach(facility => {
-      Object.entries(facility.inspections).forEach(([_, inspection]) => {
-        if (inspection.date && inspection.frequency !== 'N/A') {
-          const days = calculateDaysUntilDue(inspection.date, inspection.frequency);
-          if (days < 0) overdue++;
-          else if (days <= 30) dueSoon++;
-          else if (days <= 90) upcoming++;
-          else current++;
-        }
-      });
+      if (facility.inspections) {
+        Object.entries(facility.inspections).forEach(([_, inspection]) => {
+          if (inspection.date && inspection.frequency !== 'N/A') {
+            const days = calculateDaysUntilDue(inspection.date, inspection.frequency);
+            if (days < 0) overdue++;
+            else if (days <= 30) dueSoon++;
+            else if (days <= 90) upcoming++;
+            else current++;
+          }
+        });
+      }
     });
 
     return { overdue, dueSoon, upcoming, current };
@@ -537,11 +608,11 @@ const SummaryCards = ({ facilities }) => {
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-gray-500 text-sm font-medium">Current</p>
-            <p className="text-3xl font-bold text-gray-900 mt-2">{stats.current}</p>
+            <p className="text-gray-500 text-sm font-medium">Active Facilities</p>
+            <p className="text-3xl font-bold text-gray-900 mt-2">{facilities.length}</p>
           </div>
           <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-2xl">
-            🟢
+            🏭
           </div>
         </div>
       </div>
@@ -586,78 +657,61 @@ const SummaryCards = ({ facilities }) => {
 };
 
 // Facility Row Component
-const FacilityRow = ({ facility, calculateDaysUntilDue, getStatusColor, statusConfig, onView }) => {
-  const toast = useToast();
-  
-  const handleScheduleInspection = (facilityName, inspectionType) => {
-    toast.success(`Scheduling ${inspectionType} for ${facilityName}`, {
-      action: () => console.log('Open calendar'),
-      actionLabel: 'View Calendar'
-    });
-  };
-
-  const InspectionCell = ({ inspection, type }) => {
-    if (!inspection.date) {
-      return (
-        <td className="px-4 py-4 text-center">
-          <span className="text-gray-400 text-sm">N/A</span>
-        </td>
-      );
-    }
-
-    const days = calculateDaysUntilDue(inspection.date, inspection.frequency);
-    const status = getStatusColor(days);
-    const config = statusConfig[status];
-    
-    return (
-      <td className="px-4 py-4 text-center">
-        <div 
-          className={`inline-flex flex-col items-center px-3 py-2 rounded-lg border ${config.bg} ${config.border} cursor-pointer hover:opacity-80 transition-opacity`}
-          onClick={() => {
-            if (days < 30) {
-              handleScheduleInspection(facility.name, type);
-            }
-          }}
-        >
-          <span className={`text-sm font-medium ${config.text}`}>
-            {new Date(inspection.date).toLocaleDateString('en-US', { 
-              month: 'short',
-              day: 'numeric',
-              year: '2-digit'
-            })}
-          </span>
-          <span className={`text-xs ${config.text} mt-1`}>
-            {days < 0 ? `${Math.abs(days)}d overdue` : 
-             days === 0 ? 'Due today' :
-             `${days}d`}
-          </span>
-        </div>
-      </td>
-    );
-  };
-
+const FacilityRow = ({ facility, onView, onEdit, onDelete, hasManagePermission }) => {
   return (
     <tr className="hover:bg-gray-50 transition-colors">
       <td className="px-4 py-4">
         <div>
           <p className="font-semibold text-gray-900">{facility.name}</p>
-          <p className="text-sm text-gray-500">{facility.type}</p>
         </div>
       </td>
-      <InspectionCell inspection={facility.inspections.helideckInspection} type="Helideck Inspection" />
-      <InspectionCell inspection={facility.inspections.fuelInspection} type="Fuel Inspection" />
-      <InspectionCell inspection={facility.inspections.frictionTest} type="Friction Test" />
-      <InspectionCell inspection={facility.inspections.barrierHealth} type="Barrier Health Review" />
-      <InspectionCell inspection={facility.inspections.erpReview} type="ERP Review" />
-      <InspectionCell inspection={facility.inspections.phiHelideckPlate} type="PHI Helideck Plate" />
-      <InspectionCell inspection={facility.inspections.brsHelideckPlate} type="BRS Helideck Plate" />
+      <td className="px-4 py-4 text-center text-sm text-gray-600">
+        {facility.location}
+      </td>
+      <td className="px-4 py-4 text-center text-sm text-gray-600">
+        {facility.operator}
+      </td>
       <td className="px-4 py-4 text-center">
-        <button
-          onClick={onView}
-          className="text-green-600 hover:text-green-700 font-medium"
-        >
-          View
-        </button>
+        <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
+          {facility.type || 'Fixed'}
+        </span>
+      </td>
+      <td className="px-4 py-4 text-center">
+        <span className={`px-2 py-1 text-xs rounded-full ${
+          facility.status === 'Active' 
+            ? 'bg-green-100 text-green-700' 
+            : 'bg-gray-100 text-gray-700'
+        }`}>
+          {facility.status || 'Active'}
+        </span>
+      </td>
+      <td className="px-4 py-4 text-center">
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={onView}
+            className="text-green-600 hover:text-green-700 font-medium text-sm"
+          >
+            View
+          </button>
+          {hasManagePermission && (
+            <>
+              <span className="text-gray-300">|</span>
+              <button
+                onClick={onEdit}
+                className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+              >
+                Edit
+              </button>
+              <span className="text-gray-300">|</span>
+              <button
+                onClick={onDelete}
+                className="text-red-600 hover:text-red-700 font-medium text-sm"
+              >
+                Delete
+              </button>
+            </>
+          )}
+        </div>
       </td>
     </tr>
   );
@@ -667,20 +721,6 @@ const FacilityRow = ({ facility, calculateDaysUntilDue, getStatusColor, statusCo
 const FacilityDetailsModal = ({ facility, onClose, calculateDaysUntilDue, getStatusColor }) => {
   const toast = useToast();
   
-  const handleUpdateInspection = (type) => {
-    toast.info(`Opening update form for ${type}...`);
-  };
-
-  const inspectionTypes = [
-    { key: 'helideckInspection', label: 'Helideck Inspection', icon: '🚁' },
-    { key: 'fuelInspection', label: 'Fuel Inspection', icon: '⛽' },
-    { key: 'frictionTest', label: 'Friction Test', icon: '🔧' },
-    { key: 'barrierHealth', label: 'Barrier Health Review', icon: '🛡️' },
-    { key: 'erpReview', label: 'ERP Review', icon: '📋' },
-    { key: 'phiHelideckPlate', label: 'PHI Helideck Plate', icon: '📄' },
-    { key: 'brsHelideckPlate', label: 'BRS Helideck Plate', icon: '📄' }
-  ];
-
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
@@ -688,7 +728,8 @@ const FacilityDetailsModal = ({ facility, onClose, calculateDaysUntilDue, getSta
           <div className="flex justify-between items-start">
             <div>
               <h2 className="text-2xl font-bold">{facility.name}</h2>
-              <p className="mt-1 opacity-90">{facility.type} Asset</p>
+              <p className="mt-1 opacity-90">{facility.type || 'Fixed'} Asset</p>
+              <p className="text-sm opacity-80">{facility.location} • {facility.operator}</p>
             </div>
             <button
               onClick={onClose}
@@ -700,75 +741,38 @@ const FacilityDetailsModal = ({ facility, onClose, calculateDaysUntilDue, getSta
         </div>
 
         <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-          {/* Notes */}
-          {facility.notes && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <h3 className="font-semibold text-amber-900 mb-1">Notes</h3>
-              <p className="text-amber-800">{facility.notes}</p>
+          {/* Facility Information */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Facility Information</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Location</p>
+                <p className="font-medium">{facility.location}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Operator</p>
+                <p className="font-medium">{facility.operator}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Type</p>
+                <p className="font-medium">{facility.type || 'Fixed'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Status</p>
+                <p className="font-medium">{facility.status || 'Active'}</p>
+              </div>
             </div>
-          )}
+          </div>
 
           {/* Inspection Details */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Inspection Schedule</h3>
-            <div className="space-y-3">
-              {inspectionTypes.map(({ key, label, icon }) => {
-                const inspection = facility.inspections[key];
-                if (!inspection || inspection.frequency === 'N/A') return null;
-
-                const days = calculateDaysUntilDue(inspection.date, inspection.frequency);
-                const status = getStatusColor(days);
-                
-                return (
-                  <div key={key} className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{icon}</span>
-                        <div>
-                          <h4 className="font-semibold text-gray-900">{label}</h4>
-                          <p className="text-sm text-gray-600">
-                            Last: {new Date(inspection.date).toLocaleDateString()} • 
-                            Provider: {inspection.provider} • 
-                            Frequency: {inspection.frequency}
-                          </p>
-                          {key === 'frictionTest' && inspection.lastValue && (
-                            <p className="text-sm text-gray-600 mt-1">
-                              Last Value: {inspection.lastValue}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          status === 'overdue' ? 'bg-red-100 text-red-700' :
-                          status === 'due-soon' ? 'bg-orange-100 text-orange-700' :
-                          status === 'warning' ? 'bg-amber-100 text-amber-700' :
-                          status === 'upcoming' ? 'bg-blue-100 text-blue-700' :
-                          'bg-green-100 text-green-700'
-                        }`}>
-                          {days < 0 ? `${Math.abs(days)} days overdue` :
-                           days === 0 ? 'Due today' :
-                           `Due in ${days} days`}
-                        </div>
-                        <button
-                          onClick={() => handleUpdateInspection(label)}
-                          className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                        >
-                          Update
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+          {facility.inspections && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Inspection Schedule</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                No inspection data available for this facility yet.
+              </p>
             </div>
-          </div>
-
-          {/* Timeline View */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Timeline</h3>
-            <TimelineView facility={facility} calculateDaysUntilDue={calculateDaysUntilDue} />
-          </div>
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t">
@@ -793,67 +797,6 @@ const FacilityDetailsModal = ({ facility, onClose, calculateDaysUntilDue, getSta
           </div>
         </div>
       </div>
-    </div>
-  );
-};
-
-// Timeline View Component
-const TimelineView = ({ facility, calculateDaysUntilDue }) => {
-  const upcomingInspections = [];
-  
-  Object.entries(facility.inspections).forEach(([type, inspection]) => {
-    if (inspection.date && inspection.frequency !== 'N/A') {
-      const days = calculateDaysUntilDue(inspection.date, inspection.frequency);
-      if (days >= -30 && days <= 365) {
-        const nextDate = new Date(inspection.date);
-        switch (inspection.frequency) {
-          case 'Annual':
-            nextDate.setFullYear(nextDate.getFullYear() + 1);
-            break;
-          case '2-year':
-            nextDate.setFullYear(nextDate.getFullYear() + 2);
-            break;
-          case 'Quarterly':
-            nextDate.setMonth(nextDate.getMonth() + 3);
-            break;
-          default:
-            // For any other frequency, default to annual
-            nextDate.setFullYear(nextDate.getFullYear() + 1);
-            break;
-        }
-        
-        upcomingInspections.push({
-          type: type.replace(/([A-Z])/g, ' $1').trim(),
-          date: nextDate,
-          days: days,
-          provider: inspection.provider
-        });
-      }
-    }
-  });
-  
-  upcomingInspections.sort((a, b) => a.days - b.days);
-  
-  return (
-    <div className="relative">
-      <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-300"></div>
-      {upcomingInspections.map((item, index) => (
-        <div key={index} className="relative flex items-center mb-4">
-          <div className={`absolute left-2 w-4 h-4 rounded-full ${
-            item.days < 0 ? 'bg-red-500' :
-            item.days <= 30 ? 'bg-orange-500' :
-            item.days <= 60 ? 'bg-amber-500' :
-            item.days <= 90 ? 'bg-blue-500' :
-            'bg-green-500'
-          }`}></div>
-          <div className="ml-10">
-            <p className="font-medium text-gray-900">{item.type}</p>
-            <p className="text-sm text-gray-600">
-              {item.date.toLocaleDateString()} • {item.provider}
-            </p>
-          </div>
-        </div>
-      ))}
     </div>
   );
 };

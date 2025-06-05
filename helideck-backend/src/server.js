@@ -60,6 +60,20 @@ function initializeDatabase() {
       FOREIGN KEY (inspection_id) REFERENCES inspections(id) ON DELETE CASCADE
     )`);
 
+    // Facilities table
+    db.run(`CREATE TABLE IF NOT EXISTS facilities (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      location TEXT NOT NULL,
+      operator TEXT NOT NULL,
+      type TEXT DEFAULT 'Fixed',
+      status TEXT DEFAULT 'Active',
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (created_by) REFERENCES users(id)
+    )`);
+
     // Helicards table
     db.run(`CREATE TABLE IF NOT EXISTS helicards (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

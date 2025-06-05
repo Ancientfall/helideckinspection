@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5001/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
@@ -13,7 +13,9 @@ const getAuthHeaders = () => {
 const handleResponse = async (response) => {
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'API request failed');
+    const err = new Error(error.error || 'API request failed');
+    err.response = { data: error, status: response.status };
+    throw err;
   }
   return response.json();
 };
@@ -128,6 +130,39 @@ export const facilitiesAPI = {
 
   getById: async (id) => {
     const response = await fetch(`${API_BASE_URL}/facilities/${id}`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  create: async (facilityData) => {
+    const response = await fetch(`${API_BASE_URL}/facilities`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(facilityData)
+    });
+    return handleResponse(response);
+  },
+
+  update: async (id, facilityData) => {
+    const response = await fetch(`${API_BASE_URL}/facilities/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(facilityData)
+    });
+    return handleResponse(response);
+  },
+
+  delete: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/facilities/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  getStats: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/facilities/${id}/stats`, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
