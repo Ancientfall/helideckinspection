@@ -1,11 +1,9 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const sqlite3 = require('sqlite3').verbose();
+const db = require('../database');
 const { ROLES, isValidRole } = require('../constants/roles');
 const router = express.Router();
-
-const db = new sqlite3.Database('./database.sqlite');
 
 // Register
 router.post('/register', async (req, res) => {

@@ -8,16 +8,19 @@ const HelicardManagement = () => {
   const [helicards, setHelicards] = useState([]);
   const [isLoadingHelicards, setIsLoadingHelicards] = useState(true);
   
-  // TODO: Fetch helicards from backend API
+  // Fetch helicards from backend API
   useEffect(() => {
-    // Placeholder for API call
-    // fetch('/api/helicards')
-    //   .then(res => res.json())
-    //   .then(data => {
-    //     setHelicards(data);
-    //     setIsLoadingHelicards(false);
-    //   });
-    setIsLoadingHelicards(false);
+    fetch('http://localhost:5001/api/helicards')
+      .then(res => res.json())
+      .then(data => {
+        setHelicards(data);
+        setIsLoadingHelicards(false);
+      })
+      .catch(error => {
+        console.error('Error fetching helicards:', error);
+        toast.error('Failed to load helicards');
+        setIsLoadingHelicards(false);
+      });
   }, []);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -71,15 +74,34 @@ const HelicardManagement = () => {
     return matchesSearch && matchesFilter;
   });
 
-  const handleDownload = (helicard) => {
+  const handleDownload = async (helicard) => {
     const loadingId = Date.now();
     toast.loading(`Downloading ${helicard.facilityName} helicard...`, { id: loadingId });
     
-    // Simulate download
-    setTimeout(() => {
+    try {
+      const response = await fetch(`http://localhost:5001/api/helicards/${helicard.id}/download`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to download helicard');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = helicard.fileName || `${helicard.facilityName}_helicard.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
       toast.remove(loadingId);
       toast.success('Helicard downloaded successfully!', { category: 'helicard' });
-    }, 1500);
+    } catch (error) {
+      console.error('Error downloading helicard:', error);
+      toast.remove(loadingId);
+      toast.error('Failed to download helicard. Please try again.');
+    }
   };
 
   const handleRequestUpdate = (helicard) => {
@@ -91,10 +113,23 @@ const HelicardManagement = () => {
     });
   };
 
-  const handleDeleteHelicard = (helicardId) => {
+  const handleDeleteHelicard = async (helicardId) => {
     if (window.confirm('Are you sure you want to delete this helicard?')) {
-      setHelicards(prev => prev.filter(h => h.id !== helicardId));
-      toast.success('Helicard deleted successfully', { category: 'helicard' });
+      try {
+        const response = await fetch(`http://localhost:5001/api/helicards/${helicardId}`, {
+          method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to delete helicard');
+        }
+        
+        setHelicards(prev => prev.filter(h => h.id !== helicardId));
+        toast.success('Helicard deleted successfully', { category: 'helicard' });
+      } catch (error) {
+        console.error('Error deleting helicard:', error);
+        toast.error('Failed to delete helicard. Please try again.');
+      }
     }
   };
 
@@ -170,17 +205,29 @@ const HelicardManagement = () => {
       </div>
 
       {/* Helicards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredHelicards.map((helicard) => (
-          <HelicardCard
-            key={helicard.id}
-            helicard={helicard}
-            onView={() => setSelectedHelicard(helicard)}
-            onDownload={() => handleDownload(helicard)}
-            onDelete={() => handleDeleteHelicard(helicard.id)}
-          />
-        ))}
-      </div>
+      {isLoadingHelicards ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="text-gray-500">Loading helicards...</div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredHelicards.length === 0 ? (
+            <div className="col-span-3 text-center py-12 text-gray-500">
+              No helicards found. Upload your first helicard to get started.
+            </div>
+          ) : (
+            filteredHelicards.map((helicard) => (
+              <HelicardCard
+                key={helicard.id}
+                helicard={helicard}
+                onView={() => setSelectedHelicard(helicard)}
+                onDownload={() => handleDownload(helicard)}
+                onDelete={() => handleDeleteHelicard(helicard.id)}
+              />
+            ))
+          )}
+        </div>
+      )}
 
       {/* Upload Modal */}
       {showUploadModal && (
@@ -378,7 +425,7 @@ const UploadHelicardModal = ({ onClose, onUpload }) => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     
     // Validation
     if (!formData.file) {
@@ -394,23 +441,64 @@ const UploadHelicardModal = ({ onClose, onUpload }) => {
     const loadingId = Date.now();
     toast.loading('Uploading helicard...', { id: loadingId });
 
-    // Simulate upload delay
-    setTimeout(() => {
-      const newHelicard = {
-        ...formData,
-        id: `HEL-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-        lastUpdated: new Date().toISOString().split('T')[0],
-        expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-        version: '1.0',
-        status: 'current',
-        fileUrl: formData.file ? URL.createObjectURL(formData.file) : '/helicards/new-upload.pdf',
-        file: formData.file,
-        compliance: formData.compliance
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onerror = (error) => {
+        console.error('FileReader error:', error);
+        toast.remove(loadingId);
+        toast.error('Failed to read file. Please try again.');
+      };
+      reader.onloadend = async () => {
+        try {
+          const base64File = reader.result.split(',')[1]; // Remove data:application/pdf;base64, prefix
+        
+        const helicardData = {
+          facilityName: formData.facilityName,
+          operatingCompany: formData.operatingCompany,
+          dValue: formData.dValue || '',
+          elevation: formData.elevation || '',
+          uploadedBy: formData.uploadedBy,
+          fileName: formData.file.name,
+          fileData: base64File,
+          compliance: formData.compliance,
+          lastUpdated: new Date().toISOString().split('T')[0],
+          expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+          version: '1.0',
+          status: 'current'
+        };
+
+        const response = await fetch('http://localhost:5001/api/helicards', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(helicardData)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.text();
+          console.error('Upload failed:', response.status, errorData);
+          throw new Error(`Failed to upload helicard: ${response.status} ${errorData}`);
+        }
+
+        const newHelicard = await response.json();
+        
+        toast.remove(loadingId);
+        onUpload(newHelicard);
+        } catch (error) {
+          console.error('Error in upload process:', error);
+          toast.remove(loadingId);
+          toast.error('Failed to upload helicard. Please try again.');
+        }
       };
       
+      reader.readAsDataURL(formData.file);
+    } catch (error) {
+      console.error('Error starting upload:', error);
       toast.remove(loadingId);
-      onUpload(newHelicard);
-    }, 1500);
+      toast.error('Failed to start upload. Please try again.');
+    }
   };
 
   return (
@@ -605,6 +693,48 @@ const UploadHelicardModal = ({ onClose, onUpload }) => {
 // Enhanced Details Modal
 const HelicardDetailsModal = ({ helicard, onClose, onRequestUpdate, onDownload }) => {
   const toast = useToast();
+  const [pdfUrl, setPdfUrl] = useState(null);
+  
+  // Fetch the full helicard data including file data when modal opens
+  useEffect(() => {
+    let currentUrl = null;
+    
+    const fetchHelicardDetails = async () => {
+      try {
+        const response = await fetch(`http://localhost:5001/api/helicards/${helicard.id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch helicard details');
+        }
+        const data = await response.json();
+        
+        // Create blob URL from base64 data
+        if (data.fileData) {
+          const byteCharacters = atob(data.fileData);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+          currentUrl = url;
+          setPdfUrl(url);
+        }
+      } catch (error) {
+        console.error('Error fetching helicard details:', error);
+        toast.error('Failed to load PDF preview');
+      }
+    };
+    
+    fetchHelicardDetails();
+    
+    // Cleanup blob URL on unmount
+    return () => {
+      if (currentUrl) {
+        URL.revokeObjectURL(currentUrl);
+      }
+    };
+  }, [helicard.id, toast]); // Keep toast in dependencies
   
   const handlePrint = () => {
     toast.info('Opening print dialog...');
@@ -698,30 +828,33 @@ const HelicardDetailsModal = ({ helicard, onClose, onRequestUpdate, onDownload }
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Document Preview</h3>
             <div className="bg-gray-100 rounded-lg overflow-hidden" style={{ height: '600px' }}>
-              {helicard.fileUrl ? (
+              {pdfUrl ? (
                 <iframe
-                  src={helicard.fileUrl}
-                  className="w-full h-full"
-                  title={`${helicard.facilityName} Helicard`}
-                />
-              ) : helicard.file ? (
-                <iframe
-                  src={URL.createObjectURL(helicard.file)}
+                  src={pdfUrl}
                   className="w-full h-full"
                   title={`${helicard.facilityName} Helicard`}
                 />
               ) : (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
-                    <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 mb-4">PDF preview not available</p>
-                    <button 
-                      onClick={onDownload}
-                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 mx-auto"
-                    >
-                      <Download className="w-4 h-4" />
-                      Download Full PDF
-                    </button>
+                    {pdfUrl === null ? (
+                      <>
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+                        <p className="text-gray-600">Loading PDF preview...</p>
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-600 mb-4">PDF preview not available</p>
+                        <button 
+                          onClick={onDownload}
+                          className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 mx-auto"
+                        >
+                          <Download className="w-4 h-4" />
+                          Download Full PDF
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}

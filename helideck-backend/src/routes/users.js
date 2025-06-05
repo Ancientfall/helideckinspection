@@ -1,11 +1,10 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
+const db = require('../database');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { ROLES, isValidRole, ROLE_DISPLAY_NAMES } = require('../constants/roles');
 
 const router = express.Router();
-const db = new sqlite3.Database('./database.sqlite');
 
 // Get all users (Admin only)
 router.get('/', authenticateToken, requireRole(ROLES.ADMIN), (req, res) => {

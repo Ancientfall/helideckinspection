@@ -1,11 +1,9 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+const db = require('../database');
 const { authenticateToken } = require('../middleware/auth');
 const router = express.Router();
-
-const db = new sqlite3.Database('./database.sqlite');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({

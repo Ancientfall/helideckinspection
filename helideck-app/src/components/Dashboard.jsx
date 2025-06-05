@@ -29,6 +29,7 @@ const NotificationBellButton = () => {
 
 const Dashboard = () => {
   const toast = useToast();
+  const navigate = useNavigate();
   const notifications = useNotifications();
   const [showTestPanel, setShowTestPanel] = useState(false);
   const [metrics, setMetrics] = useState({
@@ -51,20 +52,21 @@ const Dashboard = () => {
     setIsLoadingMetrics(false);
   }, []);
 
-  // Simulate real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Simulate NOTAM updates
-      if (Math.random() > 0.8) {
-        toast.warning('New NOTAM received for Ocean Blacklion', {
-          action: () => console.log('View NOTAM'),
-          actionLabel: 'View Details'
-        });
-      }
-    }, 30000); // Check every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [toast]);
+  // TODO: Connect to real-time NOTAM updates from backend
+  // useEffect(() => {
+  //   // WebSocket or polling for real-time NOTAM updates
+  //   const ws = new WebSocket('ws://your-backend/notams');
+  //   ws.onmessage = (event) => {
+  //     const notam = JSON.parse(event.data);
+  //     if (notam.type === 'CRITICAL' || notam.type === 'WARNING') {
+  //       toast.warning(`New NOTAM received for ${notam.facility}`, {
+  //         action: () => navigate(`/notams/${notam.id}`),
+  //         actionLabel: 'View Details'
+  //       });
+  //     }
+  //   };
+  //   return () => ws.close();
+  // }, [toast, navigate]);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -343,10 +345,21 @@ const Header = () => {
 const NotamAlert = () => {
   const toast = useToast();
   const navigate = useNavigate();
-  const [visible, setVisible] = useState(true);
+  const [criticalNotams, setCriticalNotams] = useState([]);
+  const [acknowledgedIds, setAcknowledgedIds] = useState(new Set());
   
-  const handleAcknowledge = () => {
-    setVisible(false);
+  // TODO: Fetch critical NOTAMs from backend API
+  useEffect(() => {
+    // Placeholder for API call
+    // fetch('/api/notams/critical')
+    //   .then(res => res.json())
+    //   .then(data => {
+    //     setCriticalNotams(data.filter(n => n.status === 'ACTIVE'));
+    //   });
+  }, []);
+  
+  const handleAcknowledge = (notamId) => {
+    setAcknowledgedIds(prev => new Set([...prev, notamId]));
     toast.success('NOTAM acknowledged');
   };
   
@@ -354,7 +367,13 @@ const NotamAlert = () => {
     navigate('/notams');
   };
   
-  if (!visible) return null;
+  // Filter out acknowledged NOTAMs
+  const visibleNotams = criticalNotams.filter(notam => !acknowledgedIds.has(notam.id));
+  
+  if (visibleNotams.length === 0) return null;
+  
+  // Show only the first unacknowledged critical NOTAM
+  const notam = visibleNotams[0];
   
   return (
     <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-400 rounded-xl p-5 mb-6 flex items-center gap-5">
@@ -362,9 +381,9 @@ const NotamAlert = () => {
         <AlertTriangle />
       </div>
       <div className="flex-1">
-        <h3 className="font-semibold text-amber-900">Critical NOTAM - Black Hornet Platform</h3>
+        <h3 className="font-semibold text-amber-900">Critical NOTAM - {notam.facility}</h3>
         <p className="text-amber-800 text-sm mt-1">
-          Helideck temporarily restricted due to crane operations. Expected clearance: 15:00 UTC
+          {notam.title}
         </p>
       </div>
       <div className="flex gap-3">
@@ -375,7 +394,7 @@ const NotamAlert = () => {
           View Details
         </button>
         <button 
-          onClick={handleAcknowledge}
+          onClick={() => handleAcknowledge(notam.id)}
           className="px-4 py-2 bg-white text-amber-700 border border-amber-300 rounded-lg font-medium hover:bg-amber-50 transition-colors"
         >
           Acknowledge
