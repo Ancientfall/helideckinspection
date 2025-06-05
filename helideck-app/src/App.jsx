@@ -9,16 +9,13 @@ import Dashboard from './components/Dashboard';
 import HelicardManagementView from './components/HelicardManagementView';
 import FacilitiesOverview from './components/FacilitiesOverview';
 import NOTAMsOverview from './components/NOTAMsOverview';
+import UserManagement from './components/UserManagement';
 import NewInspection from './pages/NewInspection';
 import FacilityDetails from './pages/FacilityDetails';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import { initializeDefaultUsers } from './utils/userUtils';
-
+import { PERMISSIONS } from './constants/roles';
 const App = () => {
-  useEffect(() => {
-    initializeDefaultUsers();
-  }, []);
 
   return (
     <AuthProvider>
@@ -63,7 +60,7 @@ const App = () => {
               <Route
                 path="/new-inspection"
                 element={
-                  <ProtectedRoute requiredPermission="create_inspection">
+                  <ProtectedRoute requiredPermission={PERMISSIONS.CREATE_INSPECTION}>
                     <NewInspection />
                   </ProtectedRoute>
                 }
@@ -73,6 +70,14 @@ const App = () => {
                 element={
                   <ProtectedRoute>
                     <FacilityDetails />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/users"
+                element={
+                  <ProtectedRoute requiredPermission={PERMISSIONS.MANAGE_USERS}>
+                    <UserManagement />
                   </ProtectedRoute>
                 }
               />

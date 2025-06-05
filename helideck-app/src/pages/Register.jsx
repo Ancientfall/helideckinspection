@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { authAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { ROLES, ROLE_DISPLAY_NAMES, ROLE_DESCRIPTIONS } from '../constants/roles';
 
 const Register = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    name: '',
+    username: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    role: ROLES.SUPPLIER // Default to supplier
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,23 +36,12 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Registration failed');
-      }
+      const data = await authAPI.register(
+        formData.username,
+        formData.email,
+        formData.password,
+        formData.role
+      );
 
       // Store the token and user info
       localStorage.setItem('token', data.token);
@@ -88,18 +81,18 @@ const Register = () => {
           )}
           <div className="space-y-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Full Name
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                Username
               </label>
               <input
-                id="name"
-                name="name"
+                id="username"
+                name="username"
                 type="text"
-                autoComplete="name"
+                autoComplete="username"
                 required
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="John Doe"
-                value={formData.name}
+                placeholder="johndoe"
+                value={formData.username}
                 onChange={handleChange}
               />
             </div>
@@ -150,6 +143,26 @@ const Register = () => {
                 value={formData.confirmPassword}
                 onChange={handleChange}
               />
+            </div>
+            <div>
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                Role
+              </label>
+              <select
+                id="role"
+                name="role"
+                required
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                value={formData.role}
+                onChange={handleChange}
+              >
+                <option value={ROLES.SUPPLIER}>{ROLE_DISPLAY_NAMES[ROLES.SUPPLIER]} - {ROLE_DESCRIPTIONS[ROLES.SUPPLIER]}</option>
+                <option value={ROLES.HLO}>{ROLE_DISPLAY_NAMES[ROLES.HLO]} - {ROLE_DESCRIPTIONS[ROLES.HLO]}</option>
+                <option value={ROLES.BP}>{ROLE_DISPLAY_NAMES[ROLES.BP]} - {ROLE_DESCRIPTIONS[ROLES.BP]}</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Note: Admin role can only be assigned by existing administrators
+              </p>
             </div>
           </div>
 

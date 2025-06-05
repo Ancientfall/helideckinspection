@@ -6,6 +6,7 @@ import { useToast } from './ToastSystem';
 import { useNotifications } from './NotificationCenter';
 import { useAuth } from '../contexts/AuthContext';
 import { Bell } from 'lucide-react';
+import { PERMISSIONS } from '../constants/roles';
 
 const NotificationBellButton = () => {
   const notifications = useNotifications();
@@ -30,12 +31,25 @@ const Dashboard = () => {
   const toast = useToast();
   const notifications = useNotifications();
   const [showTestPanel, setShowTestPanel] = useState(false);
-  const [metrics] = useState({
-    activeFacilities: 47,
-    inspectionsDue: 12,
-    complianceRate: 96.5,
-    activeNotams: 5
+  const [metrics, setMetrics] = useState({
+    activeFacilities: 0,
+    inspectionsDue: 0,
+    complianceRate: 0,
+    activeNotams: 0
   });
+  const [isLoadingMetrics, setIsLoadingMetrics] = useState(true);
+  
+  // TODO: Fetch metrics from backend API
+  useEffect(() => {
+    // Placeholder for API call
+    // fetch('/api/dashboard/metrics')
+    //   .then(res => res.json())
+    //   .then(data => {
+    //     setMetrics(data);
+    //     setIsLoadingMetrics(false);
+    //   });
+    setIsLoadingMetrics(false);
+  }, []);
 
   // Simulate real-time updates
   useEffect(() => {
@@ -175,6 +189,7 @@ const Dashboard = () => {
 const Sidebar = () => {
   const toast = useToast();
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const [activeSection, setActiveSection] = useState('dashboard');
   
   const navSections = [
@@ -183,7 +198,7 @@ const Sidebar = () => {
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: '🏠', badge: null },
         { id: 'facilities', label: 'Facilities & Inspections', icon: '🚁', badge: null },
-        { id: 'notams', label: 'NOTAMs', icon: '⚠️', badge: 2 },
+        { id: 'notams', label: 'NOTAMs', icon: '⚠️' },
         { id: 'helicards', label: 'Helicards', icon: '📄', badge: null }
       ]
     },
@@ -194,6 +209,7 @@ const Sidebar = () => {
         { id: 'archive', label: 'Archive', icon: '📁', badge: null },
         { id: 'schedule', label: 'Schedule', icon: '📅', badge: null },
         { id: 'analytics', label: 'Analytics', icon: '📈', badge: null },
+        ...(hasPermission(PERMISSIONS.MANAGE_USERS) ? [{ id: 'users', label: 'User Management', icon: '👥', badge: null }] : []),
         { id: 'settings', label: 'Settings', icon: '⚙️', badge: null }
       ]
     }
@@ -209,6 +225,8 @@ const Sidebar = () => {
       navigate('/notams');
     } else if (itemId === 'helicards') {
       navigate('/helicards');
+    } else if (itemId === 'users') {
+      navigate('/users');
     } else if (itemId !== 'dashboard') {
       // Show loading toast for unimplemented sections
       toast.info(`${itemLabel} section coming soon...`);
@@ -493,32 +511,20 @@ const QuickActions = () => {
 const RecentInspections = () => {
   const toast = useToast();
   const [filter, setFilter] = useState('all');
-  const [inspections] = useState([
-    {
-      id: 1,
-      facility: 'Ocean Blacklion',
-      type: 'Helideck CAP 437',
-      inspector: 'BMT Group',
-      date: '2024-01-15',
-      status: 'current'
-    },
-    {
-      id: 2,
-      facility: 'Black Hornet',
-      type: 'Fuel Assessment',
-      inspector: 'PHI Aviation',
-      date: '2024-01-10',
-      status: 'current'
-    },
-    {
-      id: 3,
-      facility: 'Platform Alpha',
-      type: 'Friction Test',
-      inspector: 'BMT Group',
-      date: '2023-12-20',
-      status: 'due'
-    }
-  ]);
+  const [inspections, setInspections] = useState([]);
+  const [isLoadingInspections, setIsLoadingInspections] = useState(true);
+  
+  // TODO: Fetch recent inspections from backend API
+  useEffect(() => {
+    // Placeholder for API call
+    // fetch('/api/inspections/recent')
+    //   .then(res => res.json())
+    //   .then(data => {
+    //     setInspections(data);
+    //     setIsLoadingInspections(false);
+    //   });
+    setIsLoadingInspections(false);
+  }, []);
 
   const handleViewInspection = (inspection) => {
     toast.info(`Loading inspection for ${inspection.facility}...`);

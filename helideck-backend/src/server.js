@@ -74,6 +74,7 @@ function initializeDatabase() {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/inspections', require('./routes/inspections'));
 app.use('/api/facilities', require('./routes/facilities'));
+app.use('/api/users', require('./routes/users'));
 
 // Health check
 app.get('/api/health', (req, res) => {

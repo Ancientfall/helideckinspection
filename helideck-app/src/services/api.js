@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'http://localhost:5001/api';
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
@@ -20,20 +20,20 @@ const handleResponse = async (response) => {
 
 // Auth API
 export const authAPI = {
-  login: async (email, password) => {
+  login: async (username, password) => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ username, password })
     });
     return handleResponse(response);
   },
 
-  register: async (name, email, password) => {
+  register: async (username, email, password, role = null) => {
     const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password })
+      body: JSON.stringify({ username, email, password, ...(role && { role }) })
     });
     return handleResponse(response);
   },
@@ -70,17 +70,31 @@ export const inspectionsAPI = {
   },
 
   getByFacility: async (facilityId) => {
-    const response = await fetch(`${API_BASE_URL}/inspections/facility/${facilityId}`, {
-      headers: getAuthHeaders()
-    });
-    return handleResponse(response);
+    // Backend doesn't have facility-specific endpoint, filter on client side
+    const allInspections = await inspectionsAPI.getAll();
+    return allInspections.filter(inspection => inspection.facility_id === facilityId);
   },
 
-  create: async (inspectionData) => {
+  create: async (inspectionData, attachments = []) => {
+    const formData = new FormData();
+    
+    // Add inspection data fields
+    Object.keys(inspectionData).forEach(key => {
+      formData.append(key, inspectionData[key]);
+    });
+    
+    // Add attachments if any
+    attachments.forEach(file => {
+      formData.append('attachments', file);
+    });
+    
+    const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/inspections`, {
       method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(inspectionData)
+      headers: {
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      },
+      body: formData
     });
     return handleResponse(response);
   },
@@ -117,84 +131,73 @@ export const facilitiesAPI = {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
-  },
+  }
+};
 
-  create: async (facilityData) => {
-    const response = await fetch(`${API_BASE_URL}/facilities`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(facilityData)
+// Health check API
+export const healthAPI = {
+  check: async () => {
+    const response = await fetch(`${API_BASE_URL}/health`);
+    return handleResponse(response);
+  }
+};
+
+// Users API
+export const userAPI = {
+  getAllUsers: async () => {
+    const response = await fetch(`${API_BASE_URL}/users`, {
+      headers: getAuthHeaders()
     });
     return handleResponse(response);
   },
 
-  update: async (id, facilityData) => {
-    const response = await fetch(`${API_BASE_URL}/facilities/${id}`, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(facilityData)
+  getUserById: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+      headers: getAuthHeaders()
     });
     return handleResponse(response);
   },
 
-  delete: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/facilities/${id}`, {
+  updateUserRole: async (userId, role) => {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}/role`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ role })
+    });
+    return handleResponse(response);
+  },
+
+  deleteUser: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
       method: 'DELETE',
       headers: getAuthHeaders()
     });
     return handleResponse(response);
-  }
-};
+  },
 
-// Statistics API
-export const statsAPI = {
-  getDashboard: async () => {
-    const response = await fetch(`${API_BASE_URL}/stats/dashboard`, {
-      headers: getAuthHeaders()
-    });
-    return handleResponse(response);
-  }
-};
-
-// Helicard API
-export const helicardAPI = {
-  getAll: async () => {
-    const response = await fetch(`${API_BASE_URL}/helicards`, {
+  getCurrentUserInfo: async () => {
+    const response = await fetch(`${API_BASE_URL}/users/me`, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
   },
 
-  getById: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/helicards/${id}`, {
-      headers: getAuthHeaders()
-    });
-    return handleResponse(response);
-  },
-
-  create: async (helicardData) => {
-    const response = await fetch(`${API_BASE_URL}/helicards`, {
-      method: 'POST',
+  updatePassword: async (currentPassword, newPassword) => {
+    const response = await fetch(`${API_BASE_URL}/users/me/password`, {
+      method: 'PATCH',
       headers: getAuthHeaders(),
-      body: JSON.stringify(helicardData)
+      body: JSON.stringify({ currentPassword, newPassword })
     });
     return handleResponse(response);
   },
 
-  update: async (id, helicardData) => {
-    const response = await fetch(`${API_BASE_URL}/helicards/${id}`, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(helicardData)
-    });
-    return handleResponse(response);
-  },
-
-  delete: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/helicards/${id}`, {
-      method: 'DELETE',
+  getRolesList: async () => {
+    const response = await fetch(`${API_BASE_URL}/users/roles/list`, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
   }
 };
+
+// Note: Helicards and notifications are not yet implemented in the backend
+// These will need to be added to the backend first
