@@ -12,6 +12,7 @@ import NOTAMsOverview from './components/NOTAMsOverview';
 import NewInspection from './pages/NewInspection';
 import FacilityDetails from './pages/FacilityDetails';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import { initializeDefaultUsers } from './utils/userUtils';
 
 const App = () => {
@@ -26,6 +27,7 @@ const App = () => {
           <Router>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
               <Route
                 path="/"
                 element={

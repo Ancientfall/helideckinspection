@@ -19,7 +19,7 @@ npm install uuid   # Fix missing uuid dependency for NewInspection.jsx
 
 ## Architecture
 
-This is a React SPA for tracking helideck inspections across offshore facilities. The app uses localStorage for data persistence (no backend).
+This is a React SPA for tracking helideck inspections across offshore facilities. The app uses a backend Node.js + SQLite.
 
 ### Core Data Flow
 1. All inspection data is stored in localStorage under the key 'helideckInspections'
