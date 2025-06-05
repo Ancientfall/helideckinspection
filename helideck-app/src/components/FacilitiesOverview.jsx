@@ -27,82 +27,20 @@ const NotificationBellButton = () => {
 // Facilities Overview Dashboard Component with Sidebar Layout
 const FacilitiesOverview = () => {
   const toast = useToast();
-  const [facilities] = useState([
-    {
-      id: 1,
-      name: 'bp - Argos',
-      type: 'Fixed',
-      inspections: {
-        helideckInspection: { date: '2023-06-22', provider: 'BMT', frequency: 'Annual' },
-        fuelInspection: { date: '2023-08-08', provider: 'PHI', frequency: 'Annual' },
-        frictionTest: { date: '2023-06-23', provider: 'BMT', frequency: '2-year', lastValue: 0.72 },
-        barrierHealth: { date: '2023-06-29', provider: 'BP', frequency: 'Annual' },
-        erpReview: { date: '2023-05-02', provider: 'HLO', frequency: 'Quarterly' },
-        phiHelideckPlate: { date: '2023-06-29', provider: 'PHI', frequency: 'Annual' },
-        brsHelideckPlate: { date: '2023-08-23', provider: 'Bristow', frequency: 'Annual' }
-      },
-      notes: '2 yr Friction.'
-    },
-    {
-      id: 2,
-      name: 'bp - Atlantis',
-      type: 'Fixed',
-      inspections: {
-        helideckInspection: { date: '2023-05-03', provider: 'BMT', frequency: 'Annual' },
-        fuelInspection: { date: '2023-08-24', provider: 'PHI', frequency: 'Annual' },
-        frictionTest: { date: '2024-05-03', provider: 'BMT', frequency: 'Annual', lastValue: 0.58 },
-        barrierHealth: { date: '2023-04-24', provider: 'BP', frequency: 'Annual' },
-        erpReview: { date: '2023-05-02', provider: 'HLO', frequency: 'Quarterly' },
-        phiHelideckPlate: { date: '2023-08-26', provider: 'PHI', frequency: 'Annual' },
-        brsHelideckPlate: { date: '2023-06-29', provider: 'Bristow', frequency: 'Annual' }
-      }
-    },
-    {
-      id: 3,
-      name: 'bp - Mad Dog',
-      type: 'Fixed',
-      inspections: {
-        helideckInspection: { date: '2023-07-29', provider: 'BMT', frequency: 'Annual' },
-        fuelInspection: { date: '2023-08-29', provider: 'PHI', frequency: 'Annual' },
-        frictionTest: { date: '2022-07-29', provider: 'BMT', frequency: '2-year', lastValue: 0.68 },
-        barrierHealth: { date: '2023-07-20', provider: 'BP', frequency: 'Annual' },
-        erpReview: { date: '2023-05-07', provider: 'HLO', frequency: 'Quarterly' },
-        phiHelideckPlate: { date: '2023-09-02', provider: 'PHI', frequency: 'Annual' },
-        brsHelideckPlate: { date: '2023-06-06', provider: 'Bristow', frequency: 'Annual' }
-      },
-      notes: '2 yr Friction.'
-    },
-    {
-      id: 4,
-      name: 'Vessel - Blackhornet',
-      type: 'Vessel',
-      inspections: {
-        helideckInspection: { date: '2023-09-05', provider: 'BMT', frequency: 'Annual' },
-        fuelInspection: { date: '2023-09-14', provider: 'PHI', frequency: 'Annual' },
-        frictionTest: { date: '2023-09-05', provider: 'BMT', frequency: '2-year', lastValue: 0.71 },
-        barrierHealth: { date: null, provider: 'N/A', frequency: 'N/A' },
-        erpReview: { date: '2023-04-04', provider: 'HLO', frequency: 'Quarterly' },
-        phiHelideckPlate: { date: '2023-01-23', provider: 'PHI', frequency: 'Annual' },
-        brsHelideckPlate: { date: '2022-10-24', provider: 'Bristow', frequency: 'Annual' }
-      },
-      notes: '2 yr Friction'
-    },
-    {
-      id: 5,
-      name: 'Vessel - Blacklion',
-      type: 'Vessel',
-      inspections: {
-        helideckInspection: { date: '2022-08-11', provider: 'BMT', frequency: 'Annual' },
-        fuelInspection: { date: '2023-06-02', provider: 'PHI', frequency: 'Annual' },
-        frictionTest: { date: '2023-08-11', provider: 'BMT', frequency: '2-year', lastValue: 0.69 },
-        barrierHealth: { date: null, provider: 'N/A', frequency: 'N/A' },
-        erpReview: { date: '2023-04-04', provider: 'HLO', frequency: 'Quarterly' },
-        phiHelideckPlate: { date: '2023-09-01', provider: 'PHI', frequency: 'Annual' },
-        brsHelideckPlate: { date: '2022-10-23', provider: 'Bristow', frequency: 'Annual' }
-      },
-      notes: 'Delayed due netting to be replaced. Corrosion control challenges. 2 yr Friction.'
-    }
-  ]);
+  const [facilities, setFacilities] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // TODO: Fetch facilities from backend API
+  useEffect(() => {
+    // Placeholder for API call
+    // fetch('/api/facilities')
+    //   .then(res => res.json())
+    //   .then(data => {
+    //     setFacilities(data);
+    //     setIsLoading(false);
+    //   });
+    setIsLoading(false);
+  }, []);
 
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -177,17 +115,7 @@ const FacilitiesOverview = () => {
     
     setNotifications(upcoming.sort((a, b) => a.daysUntil - b.daysUntil));
     
-    // Show toast for critical items only once on mount
-    const critical = upcoming.filter(item => item.daysUntil <= 30);
-    if (critical.length > 0) {
-      toast.warning(`${critical.length} inspection(s) due within 30 days!`, {
-        id: 'critical-inspections-alert',
-        action: () => setShowUpcomingOnly(true),
-        actionLabel: 'View All',
-        category: 'inspection',
-        persist: true
-      });
-    }
+    // Removed hardcoded toast notification - will be triggered from backend data
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount
 
@@ -381,7 +309,7 @@ const Sidebar = () => {
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: '🏠', badge: null },
         { id: 'facilities', label: 'Facilities & Inspections', icon: '🚁', badge: null },
-        { id: 'notams', label: 'NOTAMs', icon: '⚠️', badge: 2 },
+        { id: 'notams', label: 'NOTAMs', icon: '⚠️' },
         { id: 'helicards', label: 'Helicards', icon: '📄', badge: null }
       ]
     },

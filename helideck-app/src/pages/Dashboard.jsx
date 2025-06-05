@@ -30,11 +30,11 @@ const Dashboard = () => {
         const grouped = {};
         facilitiesData.forEach(facility => {
           const facilityInspections = inspectionsData
-            .filter(i => i.facilityId === facility._id)
-            .sort((a, b) => new Date(b.date) - new Date(a.date));
+            .filter(i => i.facility_id === facility.id)
+            .sort((a, b) => new Date(b.inspection_date) - new Date(a.inspection_date));
           
           if (facilityInspections.length > 0) {
-            grouped[facility._id] = {
+            grouped[facility.id] = {
               ...facilityInspections[0],
               facilityName: facility.name
             };
@@ -53,8 +53,15 @@ const Dashboard = () => {
         };
 
         Object.values(grouped).forEach((inspection) => {
-          const { label } = getInspectionStatus(inspection.date);
+          const { label } = getInspectionStatus(inspection.inspection_date);
           if (statusGroups[label] !== undefined) statusGroups[label]++;
+        });
+        
+        // Count facilities with no inspections
+        facilitiesData.forEach(facility => {
+          if (!grouped[facility.id]) {
+            statusGroups['OVERDUE']++;
+          }
         });
 
         const chartData = Object.entries(statusGroups).map(([label, value]) => ({ label, value }));
@@ -86,20 +93,20 @@ const Dashboard = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {facilities.map((facility) => {
-          const latest = latestByFacility[facility._id];
-          const status = latest ? getInspectionStatus(latest.date) : { label: 'No Records', color: 'bg-gray-300' };
+          const latest = latestByFacility[facility.id];
+          const status = latest ? getInspectionStatus(latest.inspection_date) : { label: 'No Records', color: 'bg-gray-300' };
           return (
             <div
-              key={facility._id}
+              key={facility.id}
               className="p-4 border rounded shadow bg-white cursor-pointer hover:shadow-md"
-              onClick={() => navigate(`/facility/${facility._id}`)}
+              onClick={() => navigate(`/facility/${facility.id}`)}
             >
               <div className="flex justify-between items-center mb-2">
                 <h3 className="font-semibold text-lg">{facility.name}</h3>
                 <span className={`text-white text-sm px-2 py-1 rounded ${status.color}`}>{status.label}</span>
               </div>
               {latest ? (
-                <p className="text-sm text-gray-600">Last: {new Date(latest.date).toLocaleDateString()} by {latest.inspector}</p>
+                <p className="text-sm text-gray-600">Last: {new Date(latest.inspection_date).toLocaleDateString()} by {latest.inspector_name}</p>
               ) : (
                 <p className="text-sm text-gray-400">No inspection on record.</p>
               )}

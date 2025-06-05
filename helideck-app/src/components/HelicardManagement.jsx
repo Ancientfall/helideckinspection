@@ -5,46 +5,20 @@ import { useToast } from './ToastSystem';
 
 const HelicardManagement = () => {
   const toast = useToast();
-  const [helicards, setHelicards] = useState([
-    {
-      id: 'HEL-001',
-      facilityName: 'Black Hornet',
-      operatingCompany: 'bp Asset',
-      dValue: '22 meters',
-      elevation: "119'",
-      lastUpdated: '2024-01-15',
-      expiryDate: '2025-01-15',
-      uploadedBy: 'PHI Aviation',
-      version: '1.0',
-      status: 'current',
-      fileUrl: '/helicards/black-hornet-v1.pdf',
-      compliance: {
-        frequencyPainted: false,
-        tdpmCircle: false,
-        lightingSystem: true,
-        obstaclesFree: true
-      }
-    },
-    {
-      id: 'HEL-002',
-      facilityName: 'Ocean Blacklion',
-      operatingCompany: 'bp Asset',
-      dValue: '22 m',
-      elevation: "120'",
-      lastUpdated: '2024-01-10',
-      expiryDate: '2025-01-10',
-      uploadedBy: 'Bristow',
-      version: '1.0',
-      status: 'current',
-      fileUrl: '/helicards/ocean-blacklion-v1.pdf',
-      compliance: {
-        frequencyPainted: true,
-        tdpmCircle: true,
-        lightingSystem: true,
-        obstaclesFree: true
-      }
-    }
-  ]);
+  const [helicards, setHelicards] = useState([]);
+  const [isLoadingHelicards, setIsLoadingHelicards] = useState(true);
+  
+  // TODO: Fetch helicards from backend API
+  useEffect(() => {
+    // Placeholder for API call
+    // fetch('/api/helicards')
+    //   .then(res => res.json())
+    //   .then(data => {
+    //     setHelicards(data);
+    //     setIsLoadingHelicards(false);
+    //   });
+    setIsLoadingHelicards(false);
+  }, []);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');

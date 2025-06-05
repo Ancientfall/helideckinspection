@@ -27,97 +27,20 @@ const NotificationBellButton = () => {
 // NOTAMs Overview Component
 const NOTAMsOverview = () => {
   const toast = useToast();
-  const [notams] = useState([
-    {
-      id: 'A1234/24',
-      facility: 'bp - Atlantis',
-      type: 'CRITICAL',
-      category: 'Helideck Operations',
-      title: 'Helideck Closed for Maintenance',
-      description: 'Helideck will be closed for scheduled maintenance. No helicopter operations permitted.',
-      effectiveFrom: '2024-01-15T06:00:00Z',
-      effectiveTo: '2024-01-15T18:00:00Z',
-      status: 'ACTIVE',
-      weatherImpact: false,
-      alternateArrangements: 'Emergency medical evacuation via nearby vessel if required',
-      contactInfo: 'Platform OIM: +1-555-0123',
-      lastUpdated: '2024-01-14T12:00:00Z'
-    },
-    {
-      id: 'A1235/24',
-      facility: 'bp - Mad Dog',
-      type: 'WARNING',
-      category: 'Weather Advisory',
-      title: 'High Wind Advisory',
-      description: 'Wind speeds expected to exceed 35 knots. Helicopter operations may be restricted.',
-      effectiveFrom: '2024-01-16T00:00:00Z',
-      effectiveTo: '2024-01-17T12:00:00Z',
-      status: 'UPCOMING',
-      weatherImpact: true,
-      windSpeed: '35-45 knots',
-      windDirection: 'NW',
-      lastUpdated: '2024-01-14T08:00:00Z'
-    },
-    {
-      id: 'A1236/24',
-      facility: 'bp - Argos',
-      type: 'INFO',
-      category: 'Crane Operations',
-      title: 'Crane Operations in Progress',
-      description: 'Heavy lift operations ongoing. Pilots advised to maintain 500ft separation.',
-      effectiveFrom: '2024-01-14T06:00:00Z',
-      effectiveTo: '2024-01-14T18:00:00Z',
-      status: 'ACTIVE',
-      weatherImpact: false,
-      restrictions: 'No hovering operations within 500ft of platform',
-      lastUpdated: '2024-01-14T06:00:00Z'
-    },
-    {
-      id: 'A1237/24',
-      facility: 'Vessel - Blackhornet',
-      type: 'WARNING',
-      category: 'Helideck Status',
-      title: 'Reduced Helideck Friction',
-      description: 'Recent friction test shows value of 0.55. Extra caution advised during wet conditions.',
-      effectiveFrom: '2024-01-10T00:00:00Z',
-      effectiveTo: '2024-02-10T00:00:00Z',
-      status: 'ACTIVE',
-      weatherImpact: true,
-      frictionValue: 0.55,
-      recommendedAction: 'Reduce payload by 10% in wet conditions',
-      lastUpdated: '2024-01-10T14:00:00Z'
-    },
-    {
-      id: 'A1238/24',
-      facility: 'bp - Thunder Horse',
-      type: 'INFO',
-      category: 'Personnel Change',
-      title: 'New Helideck Landing Officer',
-      description: 'New HLO on duty. Contact frequency 123.45 MHz.',
-      effectiveFrom: '2024-01-12T00:00:00Z',
-      effectiveTo: '2024-01-26T00:00:00Z',
-      status: 'ACTIVE',
-      weatherImpact: false,
-      contactFrequency: '123.45 MHz',
-      hloName: 'John Smith',
-      lastUpdated: '2024-01-12T00:00:00Z'
-    },
-    {
-      id: 'A1239/24',
-      facility: 'bp - Na Kika',
-      type: 'CRITICAL',
-      category: 'Emergency',
-      title: 'Helideck Lighting Failure',
-      description: 'Complete helideck lighting system failure. Night operations prohibited.',
-      effectiveFrom: '2024-01-14T17:00:00Z',
-      effectiveTo: null,
-      status: 'ACTIVE',
-      weatherImpact: false,
-      restrictions: 'Daylight operations only',
-      estimatedRepair: '2024-01-16T12:00:00Z',
-      lastUpdated: '2024-01-14T17:30:00Z'
-    }
-  ]);
+  const [notams, setNotams] = useState([]);
+  const [isLoadingNotams, setIsLoadingNotams] = useState(true);
+  
+  // TODO: Fetch NOTAMs from backend API
+  useEffect(() => {
+    // Placeholder for API call
+    // fetch('/api/notams')
+    //   .then(res => res.json())
+    //   .then(data => {
+    //     setNotams(data);
+    //     setIsLoadingNotams(false);
+    //   });
+    setIsLoadingNotams(false);
+  }, []);
 
   const [typeFilter, setTypeFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -505,7 +428,7 @@ const Sidebar = () => {
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: '🏠', badge: null },
         { id: 'facilities', label: 'Facilities & Inspections', icon: '🚁', badge: null },
-        { id: 'notams', label: 'NOTAMs', icon: '⚠️', badge: 2 },
+        { id: 'notams', label: 'NOTAMs', icon: '⚠️' },
         { id: 'helicards', label: 'Helicards', icon: '📄', badge: null }
       ]
     },

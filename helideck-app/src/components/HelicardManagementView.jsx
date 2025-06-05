@@ -51,7 +51,7 @@ const Sidebar = () => {
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: '🏠', badge: null },
         { id: 'facilities', label: 'Facilities & Inspections', icon: '🚁', badge: null },
-        { id: 'notams', label: 'NOTAMs', icon: '⚠️', badge: 2 },
+        { id: 'notams', label: 'NOTAMs', icon: '⚠️' },
         { id: 'helicards', label: 'Helicards', icon: '📄', badge: null }
       ]
     },
