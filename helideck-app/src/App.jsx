@@ -6,7 +6,7 @@ import { NotificationProvider } from './components/NotificationCenter';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './components/Dashboard';
-import HelicardManagementView from './components/HelicardManagementView';
+import HelideckPlatesManagementView from './components/HelideckPlatesManagementView';
 import FacilitiesOverview from './components/FacilitiesOverview';
 import NOTAMsOverview from './components/NOTAMsOverview';
 import UserManagement from './components/UserManagement';
@@ -50,10 +50,10 @@ const App = () => {
                 }
               />
               <Route
-                path="/helicards"
+                path="/helideck-plates"
                 element={
                   <ProtectedRoute>
-                    <HelicardManagementView />
+                    <HelideckPlatesManagementView />
                   </ProtectedRoute>
                 }
               />

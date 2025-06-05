@@ -74,13 +74,15 @@ function initializeDatabase() {
       FOREIGN KEY (created_by) REFERENCES users(id)
     )`);
 
-    // Helicards table
-    db.run(`CREATE TABLE IF NOT EXISTS helicards (
+    // Helideck Plates table
+    db.run(`CREATE TABLE IF NOT EXISTS helideck_plates (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       facility_name TEXT NOT NULL,
       operating_company TEXT NOT NULL,
       d_value TEXT,
       elevation TEXT,
+      tonnage TEXT,
+      fuel TEXT,
       uploaded_by TEXT,
       file_name TEXT,
       file_data TEXT,
@@ -105,13 +107,13 @@ app.use('/api/inspections', require('./routes/inspections'));
 app.use('/api/facilities', require('./routes/facilities'));
 app.use('/api/users', require('./routes/users'));
 
-// Debug helicards route loading
+// Debug helideck plates route loading
 try {
-  const helicardsRouter = require('./routes/helicards');
-  console.log('Helicards router loaded successfully');
-  app.use('/api/helicards', helicardsRouter);
+  const helideckPlatesRouter = require('./routes/helideck-plates');
+  console.log('Helideck plates router loaded successfully');
+  app.use('/api/helideck-plates', helideckPlatesRouter);
 } catch (error) {
-  console.error('Error loading helicards router:', error);
+  console.error('Error loading helideck plates router:', error);
 }
 
 // Health check

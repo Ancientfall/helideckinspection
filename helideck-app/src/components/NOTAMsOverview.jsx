@@ -501,7 +501,7 @@ const Sidebar = () => {
         { id: 'dashboard', label: 'Dashboard', icon: '🏠', badge: null },
         { id: 'facilities', label: 'Facilities & Inspections', icon: '🚁', badge: null },
         { id: 'notams', label: 'NOTAMs', icon: '⚠️' },
-        { id: 'helicards', label: 'Helicards', icon: '📄', badge: null }
+        { id: 'helicards', label: 'Helideck Plates', icon: '📄', badge: null }
       ]
     },
     {
@@ -527,7 +527,7 @@ const Sidebar = () => {
     } else if (itemId === 'notams') {
       // Already on NOTAMs page
     } else if (itemId === 'helicards') {
-      navigate('/helicards');
+      navigate('/helideck-plates');
     } else if (itemId !== 'notams') {
       // Show loading toast for unimplemented sections
       toast.info(`${itemLabel} section coming soon...`);

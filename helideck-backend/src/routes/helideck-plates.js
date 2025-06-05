@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database');
 
-// Get all helicards
+// Get all helideck plates
 router.get('/', (req, res) => {
   const query = `
     SELECT 
@@ -11,6 +11,8 @@ router.get('/', (req, res) => {
       operating_company as operatingCompany,
       d_value as dValue,
       elevation,
+      tonnage,
+      fuel,
       uploaded_by as uploadedBy,
       file_name as fileName,
       compliance_frequency_painted as frequencyPainted,
@@ -22,18 +24,18 @@ router.get('/', (req, res) => {
       version,
       status,
       created_at as createdAt
-    FROM helicards
+    FROM helideck_plates
     ORDER BY created_at DESC
   `;
   
   db.all(query, [], (err, rows) => {
     if (err) {
-      console.error('Error fetching helicards:', err);
-      return res.status(500).json({ error: 'Failed to fetch helicards' });
+      console.error('Error fetching helideck plates:', err);
+      return res.status(500).json({ error: 'Failed to fetch helideck plates' });
     }
     
     // Transform compliance data into object format
-    const helicards = rows.map(row => ({
+    const helideckPlates = rows.map(row => ({
       ...row,
       compliance: {
         frequencyPainted: Boolean(row.frequencyPainted),
@@ -43,11 +45,11 @@ router.get('/', (req, res) => {
       }
     }));
     
-    res.json(helicards);
+    res.json(helideckPlates);
   });
 });
 
-// Get single helicard
+// Get single helideck plate
 router.get('/:id', (req, res) => {
   const { id } = req.params;
   
@@ -58,6 +60,8 @@ router.get('/:id', (req, res) => {
       operating_company as operatingCompany,
       d_value as dValue,
       elevation,
+      tonnage,
+      fuel,
       uploaded_by as uploadedBy,
       file_name as fileName,
       file_data as fileData,
@@ -70,22 +74,22 @@ router.get('/:id', (req, res) => {
       version,
       status,
       created_at as createdAt
-    FROM helicards
+    FROM helideck_plates
     WHERE id = ?
   `;
   
   db.get(query, [id], (err, row) => {
     if (err) {
-      console.error('Error fetching helicard:', err);
-      return res.status(500).json({ error: 'Failed to fetch helicard' });
+      console.error('Error fetching helideck plate:', err);
+      return res.status(500).json({ error: 'Failed to fetch helideck plate' });
     }
     
     if (!row) {
-      return res.status(404).json({ error: 'Helicard not found' });
+      return res.status(404).json({ error: 'Helideck plate not found' });
     }
     
     // Transform compliance data into object format
-    const helicard = {
+    const helideckPlate = {
       ...row,
       compliance: {
         frequencyPainted: Boolean(row.frequencyPainted),
@@ -95,13 +99,13 @@ router.get('/:id', (req, res) => {
       }
     };
     
-    res.json(helicard);
+    res.json(helideckPlate);
   });
 });
 
-// Create new helicard
+// Create new helideck plate
 router.post('/', (req, res) => {
-  console.log('Received helicard upload request');
+  console.log('Received helideck plate upload request');
   console.log('Request body keys:', Object.keys(req.body));
   
   const {
@@ -109,6 +113,8 @@ router.post('/', (req, res) => {
     operatingCompany,
     dValue,
     elevation,
+    tonnage,
+    fuel,
     uploadedBy,
     fileName,
     fileData,
@@ -128,11 +134,13 @@ router.post('/', (req, res) => {
   });
   
   const query = `
-    INSERT INTO helicards (
+    INSERT INTO helideck_plates (
       facility_name,
       operating_company,
       d_value,
       elevation,
+      tonnage,
+      fuel,
       uploaded_by,
       file_name,
       file_data,
@@ -144,7 +152,7 @@ router.post('/', (req, res) => {
       expiry_date,
       version,
       status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   
   const params = [
@@ -152,6 +160,8 @@ router.post('/', (req, res) => {
     operatingCompany,
     dValue,
     elevation,
+    tonnage,
+    fuel,
     uploadedBy,
     fileName,
     fileData,
@@ -167,17 +177,19 @@ router.post('/', (req, res) => {
   
   db.run(query, params, function(err) {
     if (err) {
-      console.error('Error creating helicard:', err);
-      return res.status(500).json({ error: 'Failed to create helicard' });
+      console.error('Error creating helideck plate:', err);
+      return res.status(500).json({ error: 'Failed to create helideck plate' });
     }
     
-    // Return the created helicard
+    // Return the created helideck plate
     res.json({
       id: this.lastID,
       facilityName,
       operatingCompany,
       dValue,
       elevation,
+      tonnage,
+      fuel,
       uploadedBy,
       fileName,
       compliance,
@@ -189,7 +201,7 @@ router.post('/', (req, res) => {
   });
 });
 
-// Update helicard
+// Update helideck plate
 router.put('/:id', (req, res) => {
   const { id } = req.params;
   const {
@@ -197,6 +209,8 @@ router.put('/:id', (req, res) => {
     operatingCompany,
     dValue,
     elevation,
+    tonnage,
+    fuel,
     uploadedBy,
     fileName,
     fileData,
@@ -208,11 +222,13 @@ router.put('/:id', (req, res) => {
   } = req.body;
   
   const query = `
-    UPDATE helicards SET
+    UPDATE helideck_plates SET
       facility_name = ?,
       operating_company = ?,
       d_value = ?,
       elevation = ?,
+      tonnage = ?,
+      fuel = ?,
       uploaded_by = ?,
       file_name = ?,
       file_data = ?,
@@ -232,6 +248,8 @@ router.put('/:id', (req, res) => {
     operatingCompany,
     dValue,
     elevation,
+    tonnage,
+    fuel,
     uploadedBy,
     fileName,
     fileData,
@@ -248,52 +266,52 @@ router.put('/:id', (req, res) => {
   
   db.run(query, params, function(err) {
     if (err) {
-      console.error('Error updating helicard:', err);
-      return res.status(500).json({ error: 'Failed to update helicard' });
+      console.error('Error updating helideck plate:', err);
+      return res.status(500).json({ error: 'Failed to update helideck plate' });
     }
     
     if (this.changes === 0) {
-      return res.status(404).json({ error: 'Helicard not found' });
+      return res.status(404).json({ error: 'Helideck plate not found' });
     }
     
-    res.json({ message: 'Helicard updated successfully' });
+    res.json({ message: 'Helideck plate updated successfully' });
   });
 });
 
-// Delete helicard
+// Delete helideck plate
 router.delete('/:id', (req, res) => {
   const { id } = req.params;
   
-  const query = 'DELETE FROM helicards WHERE id = ?';
+  const query = 'DELETE FROM helideck_plates WHERE id = ?';
   
   db.run(query, [id], function(err) {
     if (err) {
-      console.error('Error deleting helicard:', err);
-      return res.status(500).json({ error: 'Failed to delete helicard' });
+      console.error('Error deleting helideck plate:', err);
+      return res.status(500).json({ error: 'Failed to delete helideck plate' });
     }
     
     if (this.changes === 0) {
-      return res.status(404).json({ error: 'Helicard not found' });
+      return res.status(404).json({ error: 'Helideck plate not found' });
     }
     
-    res.json({ message: 'Helicard deleted successfully' });
+    res.json({ message: 'Helideck plate deleted successfully' });
   });
 });
 
-// Download helicard PDF
+// Download helideck plate PDF
 router.get('/:id/download', (req, res) => {
   const { id } = req.params;
   
-  const query = 'SELECT file_name, file_data FROM helicards WHERE id = ?';
+  const query = 'SELECT file_name, file_data FROM helideck_plates WHERE id = ?';
   
   db.get(query, [id], (err, row) => {
     if (err) {
-      console.error('Error fetching helicard file:', err);
-      return res.status(500).json({ error: 'Failed to fetch helicard file' });
+      console.error('Error fetching helideck plate file:', err);
+      return res.status(500).json({ error: 'Failed to fetch helideck plate file' });
     }
     
     if (!row || !row.file_data) {
-      return res.status(404).json({ error: 'Helicard file not found' });
+      return res.status(404).json({ error: 'Helideck plate file not found' });
     }
     
     // Convert base64 to buffer

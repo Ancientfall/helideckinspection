@@ -4,7 +4,7 @@ import { useToast } from './ToastSystem';
 import { useNotifications } from './NotificationCenter';
 import { useAuth } from '../contexts/AuthContext';
 import { Bell } from 'lucide-react';
-import HelicardManagement from './HelicardManagement';
+import HelideckPlatesManagement from './HelideckPlatesManagement';
 
 const NotificationBellButton = () => {
   const notifications = useNotifications();
@@ -25,14 +25,14 @@ const NotificationBellButton = () => {
   );
 };
 
-const HelicardManagementView = () => {
+const HelideckPlatesManagementView = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto">
-          <HelicardManagement />
+          <HelideckPlatesManagement />
         </main>
       </div>
     </div>
@@ -43,7 +43,7 @@ const HelicardManagementView = () => {
 const Sidebar = () => {
   const toast = useToast();
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState('helicards');
+  const [activeSection, setActiveSection] = useState('helideck-plates');
   
   const navSections = [
     {
@@ -52,7 +52,7 @@ const Sidebar = () => {
         { id: 'dashboard', label: 'Dashboard', icon: '🏠', badge: null },
         { id: 'facilities', label: 'Facilities & Inspections', icon: '🚁', badge: null },
         { id: 'notams', label: 'NOTAMs', icon: '⚠️' },
-        { id: 'helicards', label: 'Helicards', icon: '📄', badge: null }
+        { id: 'helideck-plates', label: 'Helideck Plates', icon: '📄', badge: null }
       ]
     },
     {
@@ -77,8 +77,8 @@ const Sidebar = () => {
       navigate('/facilities-overview');
     } else if (itemId === 'notams') {
       navigate('/notams');
-    } else if (itemId === 'helicards') {
-      // Already on Helicards page
+    } else if (itemId === 'helideck-plates') {
+      // Already on Helideck Plates page
     } else {
       // Show loading toast for unimplemented sections
       toast.info(`${itemLabel} section coming soon...`);
@@ -187,7 +187,7 @@ const Header = () => {
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Helicard Management</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Helideck Plates Management</h1>
         <div className="flex items-center gap-4">
           <NotificationBellButton />
           <div className="relative">
@@ -224,4 +224,4 @@ const Header = () => {
   );
 };
 
-export default HelicardManagementView;
+export default HelideckPlatesManagementView;

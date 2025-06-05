@@ -201,7 +201,7 @@ const Sidebar = () => {
         { id: 'dashboard', label: 'Dashboard', icon: '🏠', badge: null },
         { id: 'facilities', label: 'Facilities & Inspections', icon: '🚁', badge: null },
         { id: 'notams', label: 'NOTAMs', icon: '⚠️' },
-        { id: 'helicards', label: 'Helicards', icon: '📄', badge: null }
+        { id: 'helicards', label: 'Helideck Plates', icon: '📄', badge: null }
       ]
     },
     {
@@ -226,7 +226,7 @@ const Sidebar = () => {
     } else if (itemId === 'notams') {
       navigate('/notams');
     } else if (itemId === 'helicards') {
-      navigate('/helicards');
+      navigate('/helideck-plates');
     } else if (itemId === 'users') {
       navigate('/users');
     } else if (itemId !== 'dashboard') {
@@ -476,10 +476,10 @@ const QuickActions = () => {
   };
   
   const handleUploadHelicard = () => {
-    navigate('/helicards');
+    navigate('/helideck-plates');
     // Could also show a toast to indicate to open the upload modal
     setTimeout(() => {
-      toast.info('Click "Upload New Helicard" to add a new document');
+      toast.info('Click "Upload New Helideck Plate" to add a new document');
     }, 500);
   };
   
@@ -512,7 +512,7 @@ const QuickActions = () => {
           className="p-4 bg-white border border-gray-200 rounded-xl hover:shadow-md transition-all flex items-center gap-3"
         >
           <Upload className="w-5 h-5 text-blue-600" />
-          <span className="font-medium">Upload Helicard</span>
+          <span className="font-medium">Upload Helideck Plate</span>
         </button>
         <button 
           onClick={handleGenerateReport}
