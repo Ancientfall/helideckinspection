@@ -24,7 +24,7 @@ class NotificationManager {
   // Send a notification to both systems
   notify(message, type = 'info', options = {}) {
     const notification = {
-      id: Date.now(),
+      id: options.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       message,
       type,
       timestamp: new Date().toISOString(),

@@ -9,7 +9,7 @@ const HelicardManagement = () => {
     {
       id: 'HEL-001',
       facilityName: 'Black Hornet',
-      operatingCompany: 'BP',
+      operatingCompany: 'bp Asset',
       dValue: '22 meters',
       elevation: "119'",
       lastUpdated: '2024-01-15',
@@ -28,7 +28,7 @@ const HelicardManagement = () => {
     {
       id: 'HEL-002',
       facilityName: 'Ocean Blacklion',
-      operatingCompany: 'BP',
+      operatingCompany: 'bp Asset',
       dValue: '22 m',
       elevation: "120'",
       lastUpdated: '2024-01-10',
@@ -53,25 +53,42 @@ const HelicardManagement = () => {
 
   // Check for expiring helicards on mount
   useEffect(() => {
+    let timeoutId;
+    
     const checkExpiringHelicards = () => {
       const thirtyDaysFromNow = new Date();
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
       
-      helicards.forEach(card => {
+      const expiringCards = helicards.filter(card => {
         const expiryDate = new Date(card.expiryDate);
-        if (expiryDate <= thirtyDaysFromNow && card.status === 'current') {
-          toast.warning(`Helicard for ${card.facilityName} expires on ${card.expiryDate}`, {
-            action: () => setSelectedHelicard(card),
-            actionLabel: 'View Details',
-            category: 'helicard',
-            persist: true
-          });
-        }
+        return expiryDate <= thirtyDaysFromNow && card.status === 'current';
       });
+      
+      if (expiringCards.length > 0) {
+        // Remove any existing notification with this ID first
+        toast.remove('expiring-helicards-alert');
+        
+        // Show a single notification for all expiring cards
+        timeoutId = setTimeout(() => {
+          toast.warning(`${expiringCards.length} helicard(s) expiring within 30 days`, {
+            id: 'expiring-helicards-alert',
+            action: () => setFilterStatus('expiring'),
+            actionLabel: 'View Expiring',
+            category: 'helicard'
+          });
+        }, 100);
+      }
     };
 
     checkExpiringHelicards();
-  }, [helicards, toast]);
+    
+    // Cleanup function to remove notification and clear timeout
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      toast.remove('expiring-helicards-alert');
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
 
   const filteredHelicards = helicards.filter(card => {
     const matchesSearch = card.facilityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -103,7 +120,7 @@ const HelicardManagement = () => {
   const handleDeleteHelicard = (helicardId) => {
     if (window.confirm('Are you sure you want to delete this helicard?')) {
       setHelicards(prev => prev.filter(h => h.id !== helicardId));
-      toast.success('Helicard deleted successfully', { category: 'helicard', persist: true });
+      toast.success('Helicard deleted successfully', { category: 'helicard' });
     }
   };
 
@@ -198,7 +215,7 @@ const HelicardManagement = () => {
           onUpload={(newHelicard) => {
             setHelicards([...helicards, newHelicard]);
             setShowUploadModal(false);
-            toast.success(`Helicard for ${newHelicard.facilityName} uploaded successfully!`, { category: 'helicard', persist: true });
+            toast.success(`Helicard for ${newHelicard.facilityName} uploaded successfully!`, { category: 'helicard' });
           }}
         />
       )}
@@ -341,11 +358,17 @@ const UploadHelicardModal = ({ onClose, onUpload }) => {
   const toast = useToast();
   const [formData, setFormData] = useState({
     facilityName: '',
-    operatingCompany: 'BP',
+    operatingCompany: 'bp Asset',
     dValue: '',
     elevation: '',
     file: null,
-    uploadedBy: 'PHI Aviation'
+    uploadedBy: 'PHI Aviation',
+    compliance: {
+      frequencyPainted: false,
+      tdpmCircle: false,
+      lightingSystem: false,
+      obstaclesFree: false
+    }
   });
 
   const [isDragging, setIsDragging] = useState(false);
@@ -389,7 +412,7 @@ const UploadHelicardModal = ({ onClose, onUpload }) => {
       return;
     }
     
-    if (!formData.facilityName || !formData.dValue || !formData.elevation) {
+    if (!formData.facilityName || !formData.operatingCompany) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -406,13 +429,9 @@ const UploadHelicardModal = ({ onClose, onUpload }) => {
         expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
         version: '1.0',
         status: 'current',
-        fileUrl: '/helicards/new-upload.pdf',
-        compliance: {
-          frequencyPainted: true,
-          tdpmCircle: true,
-          lightingSystem: true,
-          obstaclesFree: true
-        }
+        fileUrl: formData.file ? URL.createObjectURL(formData.file) : '/helicards/new-upload.pdf',
+        file: formData.file,
+        compliance: formData.compliance
       };
       
       toast.remove(loadingId);
@@ -489,15 +508,17 @@ const UploadHelicardModal = ({ onClose, onUpload }) => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Operating Company
+                Operating Company *
               </label>
-              <input
-                type="text"
+              <select
                 value={formData.operatingCompany}
                 onChange={(e) => setFormData({ ...formData, operatingCompany: e.target.value })}
                 className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
-                placeholder="e.g., BP"
-              />
+                required
+              >
+                <option value="bp Asset">bp Asset</option>
+                <option value="Third-Party Vessel">Third-Party Vessel</option>
+              </select>
             </div>
           </div>
 
@@ -505,7 +526,7 @@ const UploadHelicardModal = ({ onClose, onUpload }) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                D-Value *
+                D-Value
               </label>
               <input
                 type="text"
@@ -513,12 +534,11 @@ const UploadHelicardModal = ({ onClose, onUpload }) => {
                 onChange={(e) => setFormData({ ...formData, dValue: e.target.value })}
                 className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                 placeholder="e.g., 21.0m"
-                required
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Elevation *
+                Elevation
               </label>
               <input
                 type="text"
@@ -526,8 +546,62 @@ const UploadHelicardModal = ({ onClose, onUpload }) => {
                 onChange={(e) => setFormData({ ...formData, elevation: e.target.value })}
                 className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                 placeholder="e.g., 120'"
-                required
               />
+            </div>
+          </div>
+
+          {/* Compliance Status */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Compliance Status</h3>
+            <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.compliance.frequencyPainted}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    compliance: { ...formData.compliance, frequencyPainted: e.target.checked }
+                  })}
+                  className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                />
+                <span className="ml-2 text-gray-700">Frequency Painted</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.compliance.tdpmCircle}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    compliance: { ...formData.compliance, tdpmCircle: e.target.checked }
+                  })}
+                  className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                />
+                <span className="ml-2 text-gray-700">TDPM Circle</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.compliance.lightingSystem}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    compliance: { ...formData.compliance, lightingSystem: e.target.checked }
+                  })}
+                  className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                />
+                <span className="ml-2 text-gray-700">Lighting System</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.compliance.obstaclesFree}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    compliance: { ...formData.compliance, obstaclesFree: e.target.checked }
+                  })}
+                  className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                />
+                <span className="ml-2 text-gray-700">Obstacles Free</span>
+              </label>
             </div>
           </div>
 
@@ -542,7 +616,7 @@ const UploadHelicardModal = ({ onClose, onUpload }) => {
             </button>
             <button
               type="submit"
-              disabled={!formData.file}
+              disabled={!formData.file || !formData.facilityName || !formData.operatingCompany}
               className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               Upload Helicard
@@ -649,16 +723,34 @@ const HelicardDetailsModal = ({ helicard, onClose, onRequestUpdate, onDownload }
           {/* PDF Preview */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Document Preview</h3>
-            <div className="bg-gray-100 rounded-lg p-8 text-center">
-              <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 mb-4">PDF preview would be displayed here</p>
-              <button 
-                onClick={onDownload}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 mx-auto"
-              >
-                <Download className="w-4 h-4" />
-                Download Full PDF
-              </button>
+            <div className="bg-gray-100 rounded-lg overflow-hidden" style={{ height: '600px' }}>
+              {helicard.fileUrl ? (
+                <iframe
+                  src={helicard.fileUrl}
+                  className="w-full h-full"
+                  title={`${helicard.facilityName} Helicard`}
+                />
+              ) : helicard.file ? (
+                <iframe
+                  src={URL.createObjectURL(helicard.file)}
+                  className="w-full h-full"
+                  title={`${helicard.facilityName} Helicard`}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 mb-4">PDF preview not available</p>
+                    <button 
+                      onClick={onDownload}
+                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 mx-auto"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download Full PDF
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

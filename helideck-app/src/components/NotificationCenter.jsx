@@ -43,19 +43,30 @@ export const NotificationProvider = ({ children }) => {
   }, []);
 
   const addNotification = useCallback((message, type = 'info', options = {}) => {
-    const id = Date.now();
-    const newNotification = {
-      id,
-      message,
-      type,
-      timestamp: new Date().toISOString(),
-      read: false,
-      archived: false,
-      category: options.category || 'general',
-      ...options
-    };
+    // Use a more unique ID to prevent duplicates
+    const id = options.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    setNotifications(prev => [newNotification, ...prev].slice(0, 100)); // Keep last 100
+    // Check if notification with this ID already exists
+    setNotifications(prev => {
+      const exists = prev.some(n => n.id === id);
+      if (exists && options.id) {
+        // If using a custom ID and it exists, don't add duplicate
+        return prev;
+      }
+      
+      const newNotification = {
+        id,
+        message,
+        type,
+        timestamp: new Date().toISOString(),
+        read: false,
+        archived: false,
+        category: options.category || 'general',
+        ...options
+      };
+      
+      return [newNotification, ...prev].slice(0, 100); // Keep last 100
+    });
     
     return id;
   }, []);
@@ -76,15 +87,31 @@ export const NotificationProvider = ({ children }) => {
     setNotifications(prev => 
       prev.map(n => n.id === id ? { ...n, archived: true, read: true } : n)
     );
-  }, []);
+    // Show feedback when archiving
+    if (filter !== 'archived') {
+      setTimeout(() => {
+        const archived = notifications.find(n => n.id === id);
+        if (archived) {
+          // You could add a toast here if needed
+        }
+      }, 100);
+    }
+  }, [filter, notifications]);
 
   const deleteNotification = useCallback((id) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
 
   const clearAll = useCallback(() => {
-    setNotifications([]);
-  }, []);
+    // Only clear notifications based on current filter
+    setNotifications(prev => {
+      if (filter === 'all') return prev.filter(n => n.archived);
+      if (filter === 'archived') return prev.filter(n => !n.archived);
+      if (filter === 'unread') return prev.filter(n => n.read || n.archived);
+      // For category filters, remove that category
+      return prev.filter(n => n.category !== filter);
+    });
+  }, [filter]);
 
   const toggleCenter = useCallback(() => {
     setIsOpen(prev => !prev);
@@ -108,7 +135,6 @@ export const NotificationProvider = ({ children }) => {
   return (
     <NotificationContext.Provider value={value}>
       {children}
-      <NotificationBell />
       <NotificationPanel />
     </NotificationContext.Provider>
   );
@@ -120,7 +146,7 @@ const NotificationBell = () => {
   return (
     <button
       onClick={toggleCenter}
-      className="fixed top-4 right-20 z-[90] p-3 bg-white rounded-full shadow-lg hover:shadow-xl transition-shadow"
+      className="fixed top-4 right-4 z-[90] p-3 bg-white rounded-full shadow-lg hover:shadow-xl transition-shadow"
       aria-label="Notifications"
     >
       <Bell className="w-6 h-6 text-gray-700" />
@@ -150,10 +176,11 @@ const NotificationPanel = () => {
   if (!isOpen) return null;
 
   const filteredNotifications = notifications.filter(n => {
-    if (filter === 'unread') return !n.read;
+    if (filter === 'unread') return !n.read && !n.archived;
     if (filter === 'archived') return n.archived;
     if (filter === 'all') return !n.archived;
-    return n.category === filter;
+    // Category filters should exclude archived
+    return n.category === filter && !n.archived;
   });
 
   const categories = ['all', 'unread', 'inspection', 'helicard', 'compliance', 'system', 'archived'];
@@ -162,7 +189,7 @@ const NotificationPanel = () => {
     <div className="fixed inset-0 z-[100] flex justify-end">
       <div className="absolute inset-0 bg-black/20" onClick={toggleCenter} />
       
-      <div className="relative w-full max-w-md bg-white h-full shadow-2xl overflow-hidden flex flex-col z-[101]">
+      <div className="relative w-full max-w-md bg-white h-full shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between mb-4">
@@ -236,6 +263,8 @@ const NotificationPanel = () => {
 };
 
 const NotificationItem = ({ notification, onRead, onArchive, onDelete }) => {
+  const [isRemoving, setIsRemoving] = useState(false);
+  
   const config = {
     success: {
       icon: <CheckCircle className="w-5 h-5" />,
@@ -261,11 +290,25 @@ const NotificationItem = ({ notification, onRead, onArchive, onDelete }) => {
 
   const currentConfig = config[notification.type] || config.info;
   const timeAgo = getTimeAgo(notification.timestamp);
+  
+  const handleArchive = () => {
+    setIsRemoving(true);
+    setTimeout(() => {
+      onArchive();
+    }, 300);
+  };
+  
+  const handleDelete = () => {
+    setIsRemoving(true);
+    setTimeout(() => {
+      onDelete();
+    }, 300);
+  };
 
   return (
     <div
-      className={`p-4 hover:bg-gray-50 transition-colors ${!notification.read ? 'bg-blue-50/30' : ''}`}
-      onClick={onRead}
+      className={`p-4 hover:bg-gray-50 transition-all duration-300 ${!notification.read ? 'bg-blue-50/30' : ''} ${isRemoving ? 'opacity-0 transform translate-x-full' : 'opacity-100'}`}
+      onClick={() => !isRemoving && onRead()}
     >
       <div className="flex gap-3">
         <div className={`p-2 rounded-lg ${currentConfig.bgColor} ${currentConfig.iconColor}`}>
@@ -291,17 +334,19 @@ const NotificationItem = ({ notification, onRead, onArchive, onDelete }) => {
         <div className="flex items-center gap-1">
           {!notification.archived && (
             <button
-              onClick={(e) => { e.stopPropagation(); onArchive(); }}
+              onClick={(e) => { e.stopPropagation(); handleArchive(); }}
               className="p-1 hover:bg-gray-200 rounded transition-colors"
               aria-label="Archive"
+              disabled={isRemoving}
             >
               <Archive className="w-4 h-4 text-gray-500" />
             </button>
           )}
           <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            onClick={(e) => { e.stopPropagation(); handleDelete(); }}
             className="p-1 hover:bg-gray-200 rounded transition-colors"
             aria-label="Delete"
+            disabled={isRemoving}
           >
             <X className="w-4 h-4 text-gray-500" />
           </button>
