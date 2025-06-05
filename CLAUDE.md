@@ -22,7 +22,7 @@ npm install uuid   # Fix missing uuid dependency for NewInspection.jsx
 This is a React SPA for tracking helideck inspections across offshore facilities. The app uses a backend Node.js + SQLite.
 
 ### Core Data Flow
-1. All inspection data is stored in localStorage under the key 'helideckInspections'
+1. All inspection data is now stored using SQLite as a storage option
 2. Facilities are predefined in `utils/facilities.js` (9 offshore platforms)
 3. Inspection status is calculated based on days since last inspection (180-day cycle)
 4. Status indicators use color-coding: green (< 90 days) → yellow → orange → red (≥ 180 days)
