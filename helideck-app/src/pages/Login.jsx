@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,7 +16,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const result = login(email, password);
+      const result = await login(username, password);
       if (result.success) {
         navigate('/');
       } else {
@@ -44,19 +44,19 @@ const Login = () => {
           <input type="hidden" name="remember" value="true" />
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="email-address" className="sr-only">
-                Email address
+              <label htmlFor="username" className="sr-only">
+                Username or Email
               </label>
               <input
-                id="email-address"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="username"
+                name="username"
+                type="text"
+                autoComplete="username"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Username or Email"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
               />
             </div>
             <div>
@@ -98,10 +98,7 @@ const Login = () => {
           </div>
 
           <div className="text-sm text-center text-gray-600">
-            <p>Demo accounts:</p>
-            <p className="mt-1">Admin: admin@hims.com / admin123</p>
-            <p>Inspector: inspector@hims.com / inspector123</p>
-            <p>Viewer: viewer@hims.com / viewer123</p>
+            <p>No account? <a href="/register" className="text-indigo-600 hover:text-indigo-500">Register here</a></p>
           </div>
         </form>
       </div>
