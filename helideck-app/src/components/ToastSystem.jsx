@@ -1,6 +1,7 @@
 // components/ToastSystem.jsx - Toast notification system
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { X, CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react';
+import { notificationManager } from '../utils/notificationManager';
 
 const ToastContext = createContext();
 
@@ -15,14 +16,26 @@ export const useToast = () => {
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
-  const addToast = useCallback((message, type = 'info', duration = 5000, options = {}) => {
-    const id = Date.now();
-    const newToast = { id, message, type, duration, ...options };
-    setToasts(prev => [...prev, newToast]);
+  // Listen to notification manager
+  useEffect(() => {
+    const unsubscribe = notificationManager.onToast((notification) => {
+      const duration = notification.duration ?? (notification.type === 'loading' ? 0 : 5000);
+      const newToast = { ...notification, duration };
+      setToasts(prev => [...prev, newToast]);
 
-    if (duration > 0) {
-      setTimeout(() => removeToast(id), duration);
-    }
+      if (duration > 0) {
+        setTimeout(() => {
+          setToasts(prev => prev.filter(toast => toast.id !== notification.id));
+        }, duration);
+      }
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const addToast = useCallback((message, type = 'info', duration = 5000, options = {}) => {
+    const id = notificationManager.notify(message, type, { ...options, duration });
+    return id;
   }, []);
 
   const removeToast = useCallback((id) => {
@@ -48,8 +61,8 @@ export const ToastProvider = ({ children }) => {
 
 const ToastContainer = ({ toasts, removeToast }) => {
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-3 pointer-events-none">
-      {toasts.map((toast, index) => (
+    <div className="fixed top-4 right-4 z-[200] flex flex-col gap-3">
+      {toasts.map((toast) => (
         <Toast key={toast.id} {...toast} onClose={() => removeToast(toast.id)} />
       ))}
     </div>
@@ -98,7 +111,7 @@ const Toast = ({ message, type, onClose, action, actionLabel }) => {
   const currentConfig = config[type] || config.info;
 
   return (
-    <div className={`relative min-w-[300px] max-w-md p-4 rounded-lg shadow-lg border pointer-events-auto ${currentConfig.bgColor} ${currentConfig.borderColor} ${currentConfig.textColor}`}>
+    <div className={`relative min-w-[300px] max-w-md p-4 rounded-lg shadow-lg border ${currentConfig.bgColor} ${currentConfig.borderColor} ${currentConfig.textColor}`}>
       <div className="flex items-start gap-3">
         <div className={currentConfig.iconColor}>{currentConfig.icon}</div>
         <div className="flex-1">
@@ -109,7 +122,13 @@ const Toast = ({ message, type, onClose, action, actionLabel }) => {
             </button>
           )}
         </div>
-        <button onClick={onClose} className="p-1 rounded hover:bg-black/5">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }} 
+          className="p-1 rounded hover:bg-black/5 transition-colors"
+        >
           <X className="w-4 h-4" />
         </button>
       </div>

@@ -1,6 +1,6 @@
 // HelicardManagement.jsx - Enhanced with Toast Notifications
 import React, { useState, useEffect } from 'react';
-import { Upload, FileText, Calendar, CheckCircle, AlertCircle, Download, Eye, Search, Filter, X, RefreshCw, Trash2 } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, Download, Eye, Search, X, RefreshCw, Trash2 } from 'lucide-react';
 import { useToast } from './ToastSystem';
 
 const HelicardManagement = () => {
@@ -62,14 +62,16 @@ const HelicardManagement = () => {
         if (expiryDate <= thirtyDaysFromNow && card.status === 'current') {
           toast.warning(`Helicard for ${card.facilityName} expires on ${card.expiryDate}`, {
             action: () => setSelectedHelicard(card),
-            actionLabel: 'View Details'
+            actionLabel: 'View Details',
+            category: 'helicard',
+            persist: true
           });
         }
       });
     };
 
     checkExpiringHelicards();
-  }, []);
+  }, [helicards, toast]);
 
   const filteredHelicards = helicards.filter(card => {
     const matchesSearch = card.facilityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -85,21 +87,23 @@ const HelicardManagement = () => {
     // Simulate download
     setTimeout(() => {
       toast.remove(loadingId);
-      toast.success('Helicard downloaded successfully!');
+      toast.success('Helicard downloaded successfully!', { category: 'helicard' });
     }, 1500);
   };
 
   const handleRequestUpdate = (helicard) => {
     toast.info(`Update request sent to ${helicard.uploadedBy} for ${helicard.facilityName}`, {
       action: () => console.log('View request details'),
-      actionLabel: 'Track Request'
+      actionLabel: 'Track Request',
+      category: 'helicard',
+      persist: true
     });
   };
 
   const handleDeleteHelicard = (helicardId) => {
     if (window.confirm('Are you sure you want to delete this helicard?')) {
       setHelicards(prev => prev.filter(h => h.id !== helicardId));
-      toast.success('Helicard deleted successfully');
+      toast.success('Helicard deleted successfully', { category: 'helicard', persist: true });
     }
   };
 
@@ -194,7 +198,7 @@ const HelicardManagement = () => {
           onUpload={(newHelicard) => {
             setHelicards([...helicards, newHelicard]);
             setShowUploadModal(false);
-            toast.success(`Helicard for ${newHelicard.facilityName} uploaded successfully!`);
+            toast.success(`Helicard for ${newHelicard.facilityName} uploaded successfully!`, { category: 'helicard', persist: true });
           }}
         />
       )}
@@ -361,7 +365,7 @@ const UploadHelicardModal = ({ onClose, onUpload }) => {
     const file = e.dataTransfer.files[0];
     if (file && file.type === 'application/pdf') {
       setFormData({ ...formData, file });
-      toast.success('PDF file added successfully');
+      toast.success('PDF file added successfully', { category: 'helicard' });
     } else {
       toast.error('Please upload a PDF file only');
     }
@@ -371,7 +375,7 @@ const UploadHelicardModal = ({ onClose, onUpload }) => {
     const file = e.target.files[0];
     if (file && file.type === 'application/pdf') {
       setFormData({ ...formData, file });
-      toast.success('PDF file added successfully');
+      toast.success('PDF file added successfully', { category: 'helicard' });
     } else {
       toast.error('Please upload a PDF file only');
     }
@@ -429,7 +433,98 @@ const UploadHelicardModal = ({ onClose, onUpload }) => {
           </button>
         </div>
 
- focus:ring-green-500 focus:border-green-500"
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
+          {/* File Upload */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Helicard PDF *
+            </label>
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                isDragging ? 'border-green-500 bg-green-50' : 'border-gray-300'
+              }`}
+            >
+              <Upload className="w-10 h-10 mx-auto mb-3 text-gray-400" />
+              <p className="text-sm text-gray-600 mb-2">
+                Drag and drop your PDF here, or click to browse
+              </p>
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={handleFileSelect}
+                className="hidden"
+                id="file-upload"
+              />
+              <label
+                htmlFor="file-upload"
+                className="cursor-pointer text-green-600 font-medium hover:text-green-700"
+              >
+                Browse Files
+              </label>
+              {formData.file && (
+                <p className="mt-3 text-sm text-green-600 font-medium">
+                  ✓ {formData.file.name}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Facility Information */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Facility Name *
+              </label>
+              <input
+                type="text"
+                value={formData.facilityName}
+                onChange={(e) => setFormData({ ...formData, facilityName: e.target.value })}
+                className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                placeholder="e.g., Atlantis"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Operating Company
+              </label>
+              <input
+                type="text"
+                value={formData.operatingCompany}
+                onChange={(e) => setFormData({ ...formData, operatingCompany: e.target.value })}
+                className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                placeholder="e.g., BP"
+              />
+            </div>
+          </div>
+
+          {/* Helideck Specifications */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                D-Value *
+              </label>
+              <input
+                type="text"
+                value={formData.dValue}
+                onChange={(e) => setFormData({ ...formData, dValue: e.target.value })}
+                className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
+                placeholder="e.g., 21.0m"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Elevation *
+              </label>
+              <input
+                type="text"
+                value={formData.elevation}
+                onChange={(e) => setFormData({ ...formData, elevation: e.target.value })}
+                className="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500"
                 placeholder="e.g., 120'"
                 required
               />

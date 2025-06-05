@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell } from 'lucide-react';
 import { useToast } from './ToastSystem';
 import HelicardManagement from './HelicardManagement';
 
@@ -153,22 +152,11 @@ const UserProfile = () => {
 
 // Header Component
 const Header = () => {
-  const toast = useToast();
-  
-  const handleNotificationClick = () => {
-    toast.info('You have 3 helicards expiring soon');
-  };
-
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Helicard Management</h1>
-        <button 
-          onClick={handleNotificationClick}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <Bell className="w-5 h-5 text-gray-600" />
-        </button>
+        {/* Notification bell is handled by NotificationCenter */}
       </div>
     </header>
   );

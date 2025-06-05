@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, AlertTriangle, CheckCircle, Clock, Filter, Bell, Download, Search, RefreshCw, Eye, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Clock, Download, Search, RefreshCw, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './ToastSystem';
 
 // Facilities Overview Dashboard Component with Sidebar Layout
 const FacilitiesOverview = () => {
   const toast = useToast();
-  const [facilities, setFacilities] = useState([
+  const [facilities] = useState([
     {
       id: 1,
       name: 'bp - Argos',
@@ -160,11 +160,15 @@ const FacilitiesOverview = () => {
     const critical = upcoming.filter(item => item.daysUntil <= 30);
     if (critical.length > 0) {
       toast.warning(`${critical.length} inspection(s) due within 30 days!`, {
+        id: 'critical-inspections-alert',
         action: () => setShowUpcomingOnly(true),
-        actionLabel: 'View All'
+        actionLabel: 'View All',
+        category: 'inspection',
+        persist: true
       });
     }
-  }, []); // Empty dependency array - only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
 
   // Filter facilities
   const filteredFacilities = facilities.filter(facility => {
@@ -230,7 +234,7 @@ const FacilitiesOverview = () => {
           {notifications.length > 0 && (
         <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
           <div className="flex items-center gap-3">
-            <Bell className="w-5 h-5 text-blue-600" />
+            <AlertTriangle className="w-5 h-5 text-blue-600" />
             <div className="flex-1">
               <h3 className="font-semibold text-blue-900">
                 {notifications.length} Upcoming Inspections
@@ -477,22 +481,10 @@ const UserProfile = () => {
 
 // Header Component - consistent with Dashboard
 const Header = () => {
-  const toast = useToast();
-  
-  const handleNotificationClick = () => {
-    toast.info('You have 5 unread notifications');
-  };
-
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Facilities Overview</h1>
-        <button 
-          onClick={handleNotificationClick}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <Bell className="w-5 h-5 text-gray-600" />
-        </button>
       </div>
     </header>
   );
@@ -833,6 +825,10 @@ const TimelineView = ({ facility, calculateDaysUntilDue }) => {
             break;
           case 'Quarterly':
             nextDate.setMonth(nextDate.getMonth() + 3);
+            break;
+          default:
+            // For any other frequency, default to annual
+            nextDate.setFullYear(nextDate.getFullYear() + 1);
             break;
         }
         

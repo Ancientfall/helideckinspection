@@ -1,13 +1,15 @@
 // components/Dashboard.jsx - Enhanced Dashboard with toast notifications
 import React, { useState, useEffect } from 'react';
-import { Bell, Plus, Search, Upload, AlertTriangle, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+import { Plus, Upload, AlertTriangle, CheckCircle, Clock, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './ToastSystem';
+import { useNotifications } from './NotificationCenter';
 
 const Dashboard = () => {
   const toast = useToast();
-  const [activeNotams, setActiveNotams] = useState([]);
-  const [metrics, setMetrics] = useState({
+  const notifications = useNotifications();
+  const [showTestPanel, setShowTestPanel] = useState(false);
+  const [metrics] = useState({
     activeFacilities: 47,
     inspectionsDue: 12,
     complianceRate: 96.5,
@@ -36,6 +38,108 @@ const Dashboard = () => {
         <Header />
         <main className="flex-1 overflow-y-auto p-6">
           <NotamAlert />
+          
+          {/* Test Notification Panel */}
+          <div className="mb-6 bg-gray-100 p-4 rounded-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-gray-900">Test Notifications</h3>
+              <button
+                onClick={() => setShowTestPanel(!showTestPanel)}
+                className="text-sm text-blue-600 hover:text-blue-700"
+              >
+                {showTestPanel ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            
+            {showTestPanel && (
+              <div className="grid grid-cols-4 gap-2">
+                <button
+                  onClick={() => {
+                    toast.success('Test success message', { 
+                      category: 'system',
+                      persist: true 
+                    });
+                  }}
+                  className="px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                >
+                  Success Toast
+                </button>
+                <button
+                  onClick={() => {
+                    toast.error('Test error message', { 
+                      category: 'system' 
+                    });
+                  }}
+                  className="px-3 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                >
+                  Error Toast
+                </button>
+                <button
+                  onClick={() => {
+                    toast.warning('Test warning message', { 
+                      category: 'system' 
+                    });
+                  }}
+                  className="px-3 py-2 bg-amber-600 text-white rounded text-sm hover:bg-amber-700"
+                >
+                  Warning Toast
+                </button>
+                <button
+                  onClick={() => {
+                    toast.info('Test info message with action', {
+                      category: 'system',
+                      persist: true,
+                      action: () => alert('Action clicked!'),
+                      actionLabel: 'Click Me'
+                    });
+                  }}
+                  className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                >
+                  Info with Action
+                </button>
+                <button
+                  onClick={() => {
+                    notifications.addNotification('Direct notification test', 'info', {
+                      category: 'system'
+                    });
+                  }}
+                  className="px-3 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700"
+                >
+                  Direct Notification
+                </button>
+                <button
+                  onClick={() => {
+                    const id = toast.loading('Loading something...', { id: Date.now() });
+                    setTimeout(() => {
+                      toast.remove(id);
+                      toast.success('Loading complete!');
+                    }, 3000);
+                  }}
+                  className="px-3 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
+                >
+                  Loading Toast
+                </button>
+                <button
+                  onClick={() => {
+                    notifications.toggleCenter();
+                  }}
+                  className="px-3 py-2 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700"
+                >
+                  Toggle Notification Center
+                </button>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('helideckNotifications');
+                    window.location.reload();
+                  }}
+                  className="px-3 py-2 bg-gray-800 text-white rounded text-sm hover:bg-gray-900"
+                >
+                  Clear Storage & Reload
+                </button>
+              </div>
+            )}
+          </div>
+          
           <MetricsDashboard metrics={metrics} />
           <QuickActions />
           <RecentInspections />
@@ -147,22 +251,11 @@ const NavItem = ({ icon, label, badge, active, onClick }) => (
 );
 
 const Header = () => {
-  const toast = useToast();
-  
-  const handleNotificationClick = () => {
-    toast.info('You have 5 unread notifications');
-  };
-
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-        <button 
-          onClick={handleNotificationClick}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <Bell className="w-5 h-5 text-gray-600" />
-        </button>
+        {/* Notification bell is now handled by NotificationCenter */}
       </div>
     </header>
   );

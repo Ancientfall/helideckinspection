@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Bell, Calendar, Clock, Filter, Search, MapPin, Plane, Wind, Cloud, Eye, ChevronDown, ChevronUp, Download, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Calendar, Clock, Filter, Search, MapPin, Wind, Cloud, ChevronDown, ChevronUp, Download, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from './ToastSystem';
 
 // NOTAMs Overview Component
 const NOTAMsOverview = () => {
   const toast = useToast();
-  const [notams, setNotams] = useState([
+  const [notams] = useState([
     {
       id: 'A1234/24',
       facility: 'bp - Atlantis',
@@ -98,7 +98,6 @@ const NOTAMsOverview = () => {
     }
   ]);
 
-  const [filter, setFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedNotam, setExpandedNotam] = useState(null);
@@ -119,14 +118,6 @@ const NOTAMsOverview = () => {
     return `${hours}h`;
   };
 
-  // Check if NOTAM is currently active
-  const isActive = (notam) => {
-    const now = new Date();
-    const from = new Date(notam.effectiveFrom);
-    const to = notam.effectiveTo ? new Date(notam.effectiveTo) : null;
-    
-    return from <= now && (!to || to >= now);
-  };
 
   // Filter NOTAMs
   const filteredNotams = notams.filter(notam => {
@@ -158,12 +149,18 @@ const NOTAMsOverview = () => {
   useEffect(() => {
     const criticalActive = notams.filter(n => n.type === 'CRITICAL' && n.status === 'ACTIVE');
     if (criticalActive.length > 0) {
+      // Use a unique ID to prevent duplicates
+      const notificationId = 'critical-notams-alert';
       toast.error(`${criticalActive.length} critical NOTAM(s) active!`, {
+        id: notificationId,
         action: () => setTypeFilter('CRITICAL'),
-        actionLabel: 'View Critical'
+        actionLabel: 'View Critical',
+        category: 'notams',
+        persist: true
       });
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
 
   const handleRefresh = () => {
     toast.loading('Refreshing NOTAMs...', { id: 'refresh' });
@@ -226,7 +223,7 @@ const NOTAMsOverview = () => {
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
-                  <Bell className="w-6 h-6 text-green-600" />
+                  <AlertTriangle className="w-6 h-6 text-green-600" />
                 </div>
               </div>
             </div>
@@ -610,23 +607,10 @@ const UserProfile = () => {
 
 // Header Component
 const Header = () => {
-  const toast = useToast();
-  
-  const handleNotificationClick = () => {
-    toast.info('You have 2 active NOTAMs requiring attention');
-  };
-
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">NOTAMs Overview</h1>
-        <button 
-          onClick={handleNotificationClick}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative"
-        >
-          <Bell className="w-5 h-5 text-gray-600" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
       </div>
     </header>
   );
